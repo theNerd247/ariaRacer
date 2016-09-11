@@ -30,6 +30,7 @@ executable ariaRacer
                      , happstack-lite
                      , blaze-html
                      , text
+                     , optparse-applicative
   default-language:    Haskell2010
 
 test-suite ariaRacer-test

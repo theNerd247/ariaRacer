@@ -21,10 +21,10 @@ import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
 
 bootstrapCSS :: Html.AttributeValue
-bootstrapCSS = "include/bootstrap-3.3.7-dist/css/bootstrap.min.css"
+bootstrapCSS = "css/bootstrap.min.css"
 
 bootstrapJS :: Html.AttributeValue
-bootstrapJS = "include/bootstrap-3.3.7-dist/js/bootstrap.min.js"
+bootstrapJS = "js/bootstrap.min.js"
 
 bootStrapMeta :: Html.Html
 bootStrapMeta =
