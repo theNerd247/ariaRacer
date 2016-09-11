@@ -15,8 +15,10 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
-  build-depends:       base >= 4.7 && < 5
+  exposed-modules:     Text.Blaze.Bootstrap
+  build-depends:       base
+                     , blaze-html
+                     , text
   default-language:    Haskell2010
 
 executable ariaRacer
@@ -26,7 +28,8 @@ executable ariaRacer
   build-depends:       base
                      , ariaRacer
                      , happstack-lite
-                     , blaze-markup
+                     , blaze-html
+                     , text
   default-language:    Haskell2010
 
 test-suite ariaRacer-test
