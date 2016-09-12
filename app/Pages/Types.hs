@@ -51,8 +51,8 @@ instance Html.ToMarkup RaceTime where
 
 instance Html.ToMarkup Racer where
   toMarkup (Racer n) = Html.span $ do 
-    BHtml.row $ BHtml.glyphicon "user"
-    BHtml.row $ hstr n
+    Html.p $ BHtml.addPopOver (BHtml.glyphicon "user") (hstr n)
+    
 
 instance Html.ToMarkup Rank where
   toMarkup (Rank n) = hstr $ show n

@@ -42,12 +42,15 @@ bootStrapMeta =
   ]
 
 jqueryJS :: Html.AttributeValue
-jqueryJS = "include/jquery-3.1.0/js/jquery-3.1.0.min.js"
+jqueryJS = "js/jquery-3.1.0.min.js"
 
 customCSS :: Html.AttributeValue
 customCSS = "css/custom.css"
 
-importStyleSheets = mconcat . fmap BHtml.stylesheet
+customJS :: Html.AttributeValue
+customJS = "js/custom.js"
+
+importCSS = mconcat . fmap BHtml.stylesheet
 
 importJS = mconcat . fmap BHtml.javascript
 
@@ -57,5 +60,5 @@ pageTemplate page =
   do Html.head $
        do bootStrapMeta
           Html.title (Html.toHtml $ page ^. pageTitle)
-          importStyleSheets [bootstrapCSS,customCSS]
-     Html.body $ mconcat [(Html.toHtml page), importJS [bootstrapJS, jqueryJS]]
+          importCSS [bootstrapCSS,customCSS]
+     Html.body $ mconcat [(Html.toHtml page), importJS [jqueryJS,bootstrapJS,customJS]]
