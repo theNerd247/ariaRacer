@@ -56,13 +56,14 @@ selectRaceForm
 selectRaceForm [] = mempty
 selectRaceForm raceProgMap =
   BHtml.row . Html.form $
-  do BHtml.col "xs-6" $
+  do BHtml.col "xs-6" ! HtmlA.class_ "center-block" $
        BHtml.formSelect
          "Select Race Program"
          "selRaceProg"
          raceProgMap
          (Just . fst . head $ raceProgMap)
-     BHtml.col "xs-6" $ BHtml.formSubmit $ hstr "Submit"
+     BHtml.col "xs-6" ! HtmlA.class_ "center-block" $
+       BHtml.formSubmit $ hstr "Submit"
 
 testRaceForm :: [(String, String)]
 testRaceForm =

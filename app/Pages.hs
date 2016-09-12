@@ -13,11 +13,13 @@ Portability : POSIX
 module Pages
   ( pageTemplate
   , userPage
+  , tournamentPage
   ) where
 
 import Data.Text
 import Pages.Types
 import Pages.Templates.User
+import Pages.Templates.Tournament
 import Text.Blaze.Html ((!))
 import Control.Lens
 import qualified Text.Blaze.Html5 as Html
@@ -25,6 +27,8 @@ import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
 
 userPage = pageTemplate $ Page "Home" (Just userNavbar) userPageTemplate
+
+tournamentPage = pageTemplate $ Page "Tournament" (Just userNavbar) $ tournamentPageTemplate tstTourData
 
 bootstrapCSS :: Html.AttributeValue
 bootstrapCSS = "css/bootstrap.min.css"
@@ -60,5 +64,6 @@ pageTemplate page =
   do Html.head $
        do bootStrapMeta
           Html.title (Html.toHtml $ page ^. pageTitle)
-          importCSS [bootstrapCSS,customCSS]
-     Html.body $ mconcat [(Html.toHtml page), importJS [jqueryJS,bootstrapJS,customJS]]
+          importCSS [bootstrapCSS, customCSS]
+     Html.body $
+       mconcat [(Html.toHtml page), importJS [jqueryJS, bootstrapJS, customJS]]

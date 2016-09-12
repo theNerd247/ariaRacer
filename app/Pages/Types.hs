@@ -1,18 +1,20 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-#LANGUAGE OverloadedStrings #-}
 
-module Pages.Types
-  ( Navbar(..)
-  , BodyHtml(..)
-  , Page(..)
-  , pageTitle
-  , pageNavbar
-  , pageBody
-  , RaceTime(..)
-  , Racer(..)
-  , Rank(..)
-  , hstr
-  ) where
+module Pages.Types where
+  {-( Navbar(..)-}
+  {-, BodyHtml(..)-}
+  {-, Page(..)-}
+  {-, pageTitle-}
+  {-, pageNavbar-}
+  {-, pageBody-}
+  {-, RaceTime(..)-}
+  {-, Racer(..)-}
+  {-, Rank(..)-}
+  {-, MatchRacerData(..)-}
+  {-, -}
+  {-, hstr-}
+  {-) where-}
 
 import Text.Blaze.Html ((!))
 import qualified Text.Blaze.Html5 as Html
@@ -35,11 +37,24 @@ data Page = Page
 
 newtype RaceTime = RaceTime TimeOfDay 
 
-newtype Racer = Racer String
+newtype Racer = Racer { _racerName :: String}
 
 newtype Rank = Rank Integer
 
+data MatchRacerData = MatchRacerData 
+  { _mrRacer :: Racer
+  , _mrTime :: Maybe RaceTime
+  , _mrWinner :: Bool
+  }
+
+newtype TourMatchData = TourMatchData (MatchRacerData,MatchRacerData)  
+
+makeLenses ''MatchRacerData
 makeLenses ''Page
+makeLenses ''TourMatchData
+makeLenses ''Racer
+
+mkRaceTime h m = RaceTime $ TimeOfDay 0 h m
 
 instance Html.ToMarkup Page where
   toMarkup page = do
@@ -52,7 +67,7 @@ instance Html.ToMarkup RaceTime where
       secs = truncate . todSec :: TimeOfDay -> Integer
 
 instance Html.ToMarkup Racer where
-  toMarkup (Racer n) = BHtml.addPopOver (BHtml.glyphicon "user") (hstr n)
+  toMarkup (Racer n) = BHtml.addPopOver "User Data" (BHtml.glyphicon "user") (hstr n)
     
 
 instance Html.ToMarkup Rank where

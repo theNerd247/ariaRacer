@@ -39,7 +39,7 @@ packages:
   - location: '.'
   - location: 
       git: https://github.com/theNerd247/blaze-bootstrap.git
-      commit: 3a642f967864fd74c9faad69c28dc76242722076 
+      commit: b72ba022d06372b21a859ca1bc5b5ccdf7d0385f
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps: 

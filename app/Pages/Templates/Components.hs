@@ -15,18 +15,14 @@ vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
 no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
 -}
-module Pages.Templates.Components
-  ( currentRace
-  , nextRace
-  , raceBox
-  , racerTime
-  ) where
+module Pages.Templates.Components where
 
 import qualified Data.Text as T
 import Text.Blaze.Html ((!))
 import qualified Text.Blaze.Html5 as Html
 import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
+import Control.Lens
 import Data.String
 import Pages.Types
 
@@ -40,19 +36,42 @@ raceBox :: String -> Maybe RaceTime -> (Racer, Racer) -> Html.Html
 raceBox ttle t (r1, r2) =
   BHtml.panelDefault . BHtml.row $
   do BHtml.col "xs-4" $ Html.span ! HtmlA.class_ "h2" $ hstr ttle
-     BHtml.col "xs-2" $ Html.span ! HtmlA.class_ "h2" $ maybe mempty Html.toHtml t
+     BHtml.col "xs-2" $ Html.span ! HtmlA.class_ "h2" $
+       maybe mempty Html.toHtml t
      BHtml.col "xs-3" $ showRacer r1
      BHtml.col "xs-3" $ showRacer r2
   where
-    showRacer r@(Racer rn) = Html.span ! HtmlA.class_ "h2" $ mconcat [Html.toHtml r, hstr " ", Html.small $ hstr rn]
+    showRacer r@(Racer rn) =
+      Html.span ! HtmlA.class_ "h2" $
+      mconcat [Html.toHtml r, hstr " ", Html.small $ hstr rn]
 
 racerTime :: Maybe Rank -> Racer -> RaceTime -> Html.Html
 racerTime rnk r@(Racer rn) t =
   BHtml.panelDefault . BHtml.row $
-  do BHtml.col "xs-3" $
-       Html.span ! HtmlA.class_ "h2" $
+  do BHtml.col "xs-3" $ Html.span ! HtmlA.class_ "h2" $
        mconcat [rankHtml rnk, hstr " ", Html.toHtml r]
      BHtml.col "xs-3" $ Html.span ! HtmlA.class_ "h2" $ Html.toHtml rn
      BHtml.col "xs-6" $ Html.span ! HtmlA.class_ "h2" $ Html.toHtml t
   where
     rankHtml = maybe mempty (BHtml.badge . Html.toHtml)
+
+matchDataIcon :: TourMatchData -> Html.Html
+matchDataIcon (TourMatchData d) = BHtml.addPopOver "Match Data" matchContent mathDataHtml
+  where
+    matchContent =
+      Html.div ! HtmlA.class_ "circle" $ Html.span ! HtmlA.class_ "h1" $
+      BHtml.glyphicon "flag"
+    mathDataHtml = do
+      matchRacerHtml $ fst d
+      matchRacerHtml $ snd d
+    matchRacerHtml :: MatchRacerData -> Html.Html
+    matchRacerHtml r =
+      BHtml.row $
+      do hstr (r ^. mrRacer . racerName)
+         hstr " "
+         (if r ^. mrWinner
+            then winnerHtml
+            else mempty)
+         hstr " "
+         maybe mempty Html.toHtml $ r ^. mrTime
+    winnerHtml = BHtml.glyphicon "king"

@@ -20,6 +20,10 @@ main :: IO ()
 main = do
   serverPath <- execParser opts
   serve Nothing $
-    msum [dir "home" $ (ok $ toResponse userPage), defaultResponse serverPath]
+    msum
+      [ dir "home" $ (ok $ toResponse userPage)
+      , dir "tour" $ (ok $ toResponse tournamentPage)
+      , defaultResponse serverPath
+      ]
   where
     opts = info (helper <*> parseServerPath) fullDesc
