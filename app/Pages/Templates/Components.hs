@@ -39,12 +39,12 @@ nextRace = raceBox "Next Race" Nothing
 raceBox :: String -> Maybe RaceTime -> (Racer, Racer) -> Html.Html
 raceBox ttle t (r1, r2) =
   BHtml.panelDefault . BHtml.row $
-  do BHtml.col "xs-3" $ Html.h3 $ hstr ttle
-     BHtml.col "xs-3" $ Html.h3 $ maybe mempty Html.toHtml t
+  do BHtml.col "xs-4" $ Html.span ! HtmlA.class_ "h2" $ hstr ttle
+     BHtml.col "xs-2" $ Html.span ! HtmlA.class_ "h2" $ maybe mempty Html.toHtml t
      BHtml.col "xs-3" $ showRacer r1
      BHtml.col "xs-3" $ showRacer r2
   where
-    showRacer r@(Racer rn) = Html.h2 $ mconcat [Html.toHtml r, hstr " ", Html.small $ hstr rn]
+    showRacer r@(Racer rn) = Html.span ! HtmlA.class_ "h2" $ mconcat [Html.toHtml r, hstr " ", Html.small $ hstr rn]
 
 racerTime :: Maybe Rank -> Racer -> RaceTime -> Html.Html
 racerTime rnk r@(Racer rn) t =
@@ -52,7 +52,7 @@ racerTime rnk r@(Racer rn) t =
   do BHtml.col "xs-3" $
        Html.span ! HtmlA.class_ "h2" $
        mconcat [rankHtml rnk, hstr " ", Html.toHtml r]
-     BHtml.col "xs-3" $ Html.toHtml rn
-     BHtml.col "xs-6" $ Html.toHtml t
+     BHtml.col "xs-3" $ Html.span ! HtmlA.class_ "h2" $ Html.toHtml rn
+     BHtml.col "xs-6" $ Html.span ! HtmlA.class_ "h2" $ Html.toHtml t
   where
     rankHtml = maybe mempty (BHtml.badge . Html.toHtml)

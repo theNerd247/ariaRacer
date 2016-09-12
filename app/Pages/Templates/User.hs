@@ -30,42 +30,54 @@ import Data.String
 import Pages.Templates.Components
 import Pages.Types
 
-userPageTemplate = BHtml.row $ do 
-  BHtml.col "xs-2" uploadButton
-  BHtml.col "xs-8" $ raceStats
-  BHtml.col "xs-2" $ selectRaceForm testRaceForm
+userPageTemplate = do
+  BHtml.row $
+    do BHtml.col "xs-2" mempty
+       BHtml.col "xs-4" $ uploadButton
+       BHtml.col "xs-4" $ selectRaceForm testRaceForm
+       BHtml.col "xs-2" mempty
+  BHtml.row $
+    do BHtml.col "xs-2" mempty
+       BHtml.col "xs-8" $ raceStats
+       BHtml.col "xs-2" mempty
 
 userNavbar =
   BHtml.mainNavigation "home" (hstr "Aria Racer") $
-  [ ("stats", hstr "Current Race")
-  , ("user_settings", BHtml.glyphicon "user")
-  ]
+  [("stats", hstr "Current Race"), ("user_settings", BHtml.glyphicon "user")]
 
 uploadButton =
   Html.button ! HtmlA.type_ "button" ! HtmlA.class_ "btn btn-lg btn-success" $
   do hstr "Upload Code "
      BHtml.glyphicon "upload"
 
-selectRaceForm :: (Eq k, Html.ToValue k, Html.ToMarkup v) => [(k,v)] -> Html.Html
+selectRaceForm
+  :: (Eq k, Html.ToValue k, Html.ToMarkup v)
+  => [(k, v)] -> Html.Html
 selectRaceForm [] = mempty
-selectRaceForm raceProgMap = Html.form $ do 
-  BHtml.formSelect "Select Race Program" "selRaceProg" raceProgMap (Just . fst . head $ raceProgMap)
-  BHtml.formSubmit $ hstr "Submit"
+selectRaceForm raceProgMap =
+  BHtml.row . Html.form $
+  do BHtml.col "xs-6" $
+       BHtml.formSelect
+         "Select Race Program"
+         "selRaceProg"
+         raceProgMap
+         (Just . fst . head $ raceProgMap)
+     BHtml.col "xs-6" $ BHtml.formSubmit $ hstr "Submit"
 
-testRaceForm :: [(String,String)]
-testRaceForm = [
-  ("Prog1","program1.cpp")
-  ,("Prog2","program2.cpp")
-  ,("Prog3","program3.cpp")
+testRaceForm :: [(String, String)]
+testRaceForm =
+  [ ("Prog1", "program1.cpp")
+  , ("Prog2", "program2.cpp")
+  , ("Prog3", "program3.cpp")
   ]
 
 raceStats = do
-  currentRace (Just t) (r1,r2)
-  nextRace (r1,r2)
+  currentRace (Just t) (r1, r2)
+  nextRace (r1, r2)
   racerTime (Just . Rank $ 1) r1 t
   racerTime (Just . Rank $ 2) r2 t
   racerTime (Just . Rank $ 3) r1 t
-  where 
-    t = RaceTime $ TimeOfDay 0 2 43 
-    r1 = Racer "Bob Marley" 
+  where
+    t = RaceTime $ TimeOfDay 0 2 43
+    r1 = Racer "Bob Marley"
     r2 = Racer "Hobo Joe"
