@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-#LANGUAGE OverloadedStrings #-}
 
 module Pages.Types
   ( Navbar(..)
@@ -13,6 +14,7 @@ module Pages.Types
   , hstr
   ) where
 
+import Text.Blaze.Html ((!))
 import qualified Text.Blaze.Html5 as Html
 import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
@@ -50,8 +52,7 @@ instance Html.ToMarkup RaceTime where
       secs = truncate . todSec :: TimeOfDay -> Integer
 
 instance Html.ToMarkup Racer where
-  toMarkup (Racer n) = Html.span $ do 
-    Html.p $ BHtml.addPopOver (BHtml.glyphicon "user") (hstr n)
+  toMarkup (Racer n) = BHtml.addPopOver (BHtml.glyphicon "user") (hstr n)
     
 
 instance Html.ToMarkup Rank where
