@@ -33,6 +33,8 @@ executable ariaRacer
                      , blaze-bootstrap
                      , text
                      , optparse-applicative
+                     , lens
+                     , time
   default-language:    Haskell2010
 
 test-suite ariaRacer-test

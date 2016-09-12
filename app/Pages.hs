@@ -10,15 +10,21 @@ Stability   : experimental
 Portability : POSIX
 
 -}
-module HtmlTemplates
+module Pages
   ( pageTemplate
+  , userPage
   ) where
 
 import Data.Text
+import Pages.Types
+import Pages.Templates.User
 import Text.Blaze.Html ((!))
+import Control.Lens
 import qualified Text.Blaze.Html5 as Html
 import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
+
+userPage = pageTemplate $ Page "Home" (Just userNavbar) userPageTemplate
 
 bootstrapCSS :: Html.AttributeValue
 bootstrapCSS = "css/bootstrap.min.css"
@@ -38,17 +44,18 @@ bootStrapMeta =
 jqueryJS :: Html.AttributeValue
 jqueryJS = "include/jquery-3.1.0/js/jquery-3.1.0.min.js"
 
+customCSS :: Html.AttributeValue
+customCSS = "css/custom.css"
+
 importStyleSheets = mconcat . fmap BHtml.stylesheet
 
 importJS = mconcat . fmap BHtml.javascript
 
-pageTemplate :: Text -> Html.Html -> Html.Html
-pageTemplate ttle bdy =
+pageTemplate :: Page -> Html.Html
+pageTemplate page =
   Html.docTypeHtml $
   do Html.head $
        do bootStrapMeta
-          Html.title (Html.toHtml ttle)
-          importStyleSheets [bootstrapCSS]
-     Html.body $
-       do BHtml.container bdy
-          importJS [bootstrapJS, jqueryJS]
+          Html.title (Html.toHtml $ page ^. pageTitle)
+          importStyleSheets [bootstrapCSS,customCSS]
+     Html.body $ mconcat [(Html.toHtml page), importJS [bootstrapJS, jqueryJS]]
