@@ -17,9 +17,9 @@ module Pages
   ) where
 
 import Data.Text
-import Pages.Types
-import Pages.Templates.User
-import Pages.Templates.Tournament
+import Html.Templates.Components
+import Html.Templates.User
+import Html.Templates.Tournament
 import Text.Blaze.Html ((!))
 import Control.Lens
 import qualified Text.Blaze.Html5 as Html
@@ -28,7 +28,8 @@ import qualified Text.Blaze.Bootstrap as BHtml
 
 userPage = pageTemplate $ Page "Home" (Just userNavbar) userPageTemplate
 
-tournamentPage = pageTemplate $ Page "Tournament" (Just userNavbar) $ tournamentPageTemplate tstTourData
+tournamentPage =
+  pageTemplate $ Page "Tournament" (Just userNavbar) $ tournamentPageTemplate tstTourData
 
 bootstrapCSS :: Html.AttributeValue
 bootstrapCSS = "css/bootstrap.min.css"

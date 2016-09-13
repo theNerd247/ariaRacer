@@ -1,21 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-#LANGUAGE TemplateHaskell #-}
 
-{-|
-Module      : Name
-Description : Short description
-Copyright   : (c) Some Guy, 2013
-License     : GPL-3
-Maintainer  : sample@email.com
-Stability   : experimental
-Portability : POSIX
-
- Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At
-vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
-no sea takimata sanctus est Lorem ipsum dolor sit amet.
-
--}
-module Pages.Templates.Components where
+module Html.Templates.Components where
 
 import qualified Data.Text as T
 import Text.Blaze.Html ((!))
@@ -24,7 +10,40 @@ import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
 import Control.Lens
 import Data.String
-import Pages.Types
+import Data.Time
+import Data.Racer
+
+type Navbar = Html.Html
+
+type BodyHtml = Html.Html
+
+data Page = Page
+  { _pageTitle :: T.Text
+  , _pageNavbar :: Maybe Navbar
+  , _pageBody :: BodyHtml
+  }
+
+makeLenses ''Page
+
+instance Html.ToMarkup Page where
+  toMarkup page = do
+    maybe mempty id $ page ^. pageNavbar 
+    BHtml.container $ page ^. pageBody
+
+instance Html.ToMarkup RaceTime where
+  toMarkup (RaceTime t) = Html.toHtml $ (show $ todMin t) ++ " : " ++ (show . secs $ t)
+    where
+      secs = truncate . todSec :: TimeOfDay -> Integer
+
+instance Html.ToMarkup Racer where
+  toMarkup (Racer n) = BHtml.addPopOver "User Data" (BHtml.glyphicon "user") (hstr n)
+    
+
+instance Html.ToMarkup Rank where
+  toMarkup (Rank n) = hstr $ show n
+
+hstr :: String -> Html.Html
+hstr = Html.toHtml
 
 currentRace :: Maybe RaceTime -> (Racer, Racer) -> Html.Html
 currentRace = raceBox "Current Race"

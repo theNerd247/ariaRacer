@@ -16,15 +16,15 @@ no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
 -}
 
-module Pages.Templates.Tournament where
+module Html.Templates.Tournament where
 
 import Text.Blaze.Html ((!))
 import qualified Text.Blaze.Html5 as Html
 import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
 import Control.Lens
-import Pages.Types
-import Pages.Templates.Components
+import Html.Templates.Components
+import Data.Racer
 
 tournamentPageTemplate = matchDataIcon
 

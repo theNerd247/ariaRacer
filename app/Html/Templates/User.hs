@@ -15,7 +15,7 @@ vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren,
 no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
 -}
-module Pages.Templates.User
+module Html.Templates.User
   ( userNavbar
   , userPageTemplate
   ) where
@@ -27,8 +27,8 @@ import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
 import Data.Time
 import Data.String
-import Pages.Templates.Components
-import Pages.Types
+import Data.Racer
+import Html.Templates.Components
 
 userPageTemplate = do
   BHtml.row $
