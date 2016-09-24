@@ -73,12 +73,12 @@ testRaceForm =
   ]
 
 raceStats = do
-  currentRace (Just t) (r1, r2)
+  currentRace t (r1, r2)
   nextRace (r1, r2)
-  racerTime (Just . Rank $ 1) r1 t
-  racerTime (Just . Rank $ 2) r2 t
-  racerTime (Just . Rank $ 3) r1 t
+  racerRank (mkRank 1) r1 t
+  racerRank (mkRank 2) r2 t
+  racerRank (mkRank 3) r1 t
   where
-    t = RaceTime $ TimeOfDay 0 2 43
-    r1 = Racer "Bob Marley"
-    r2 = Racer "Hobo Joe"
+    t = mkRaceTime 2 43
+    r1 = Racer "Bob Marley" 0 
+    r2 = Racer "Hobo Joe" 2

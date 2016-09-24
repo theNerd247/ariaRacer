@@ -26,10 +26,10 @@ import Control.Lens
 import Html.Templates.Components
 import Data.Racer
 
-tournamentPageTemplate = matchDataIcon
-
-tstTourData = TourMatchData (u1,u1)
-  where
-    u1 = MatchRacerData r1 (Just t) True
-    r1 = Racer "Bob Marley"
-    t = mkRaceTime 2 59
+tournamentPageTemplate = matchDataIcon tstData
+  where 
+    tstData = MatchData (r1,r2) (t1,t2)
+    r1 = Racer "Foo bar" 0
+    r2 = Racer "Bob Marley" 1
+    t1 = mkRaceTime 2 35
+    t2 = mkRaceTime 5 12

@@ -29,7 +29,7 @@ import qualified Text.Blaze.Bootstrap as BHtml
 userPage = pageTemplate $ Page "Home" (Just userNavbar) userPageTemplate
 
 tournamentPage =
-  pageTemplate $ Page "Tournament" (Just userNavbar) $ tournamentPageTemplate tstTourData
+  pageTemplate $ Page "Tournament" (Just userNavbar) tournamentPageTemplate 
 
 bootstrapCSS :: Html.AttributeValue
 bootstrapCSS = "css/bootstrap.min.css"

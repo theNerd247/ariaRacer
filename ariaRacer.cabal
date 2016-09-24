@@ -19,6 +19,7 @@ library
   build-depends:       base
                      , lens
                      , time
+                     , containers
   default-language:    Haskell2010
 
 executable ariaRacer
