@@ -22,8 +22,8 @@ library
                      , containers
   default-language:    Haskell2010
 
-executable ariaRacer
-  hs-source-dirs:      app
+executable arweb
+  hs-source-dirs:      arweb/app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
@@ -35,15 +35,6 @@ executable ariaRacer
                      , optparse-applicative
                      , lens
                      , time
-  default-language:    Haskell2010
-
-test-suite ariaRacer-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     --, ariaRacer
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
