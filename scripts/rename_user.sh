@@ -8,5 +8,5 @@ if (( $# != 2 )); then
 fi
 
 log "renamin user $1 to $2"
-remove_user $1
-create_user $2
+remove_user.sh $1
+create_user.sh $2

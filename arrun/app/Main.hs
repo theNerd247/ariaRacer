@@ -31,15 +31,16 @@ data PHandle = PHandle {_pHandle :: ProcessHandle, _pName :: String}
 makeLenses ''PHandle
 
 executeFile :: FilePath -> [String] -> IO PHandle
-executeFile file args = PHandle <$> (runcmd $ args) <*> (pure file)
+executeFile file args = PHandle <$> runcmd <*> (pure file)
   where
-    runcmd = spawnProcess file . intersperse " "
+    runcmd = createProcess arProccess >>= return . view _4
+    arProccess = (proc file args) {cwd = Just "/home/noah/src/com/ariaRacer/scripts"}
 
 runWorker :: ARCommand -> IO PHandle
-runWorker (CreateUser n) = executeFile "create_user" [n]
-runWorker (RemoveUser n) = executeFile "remove_user " [n]
-runWorker (RenameUser n1 n2) = executeFile "rename_user " [n1,n2]
-runWorker (BuildUser n b) = executeFile "build_user" [n,b]
+runWorker (CreateUser n) = executeFile "create_user.sh" [n]
+runWorker (RemoveUser n) = executeFile "remove_user.sh" [n]
+runWorker (RenameUser n1 n2) = executeFile "rename_user.sh" [n1,n2]
+runWorker (BuildUser n b) = executeFile "build_user.sh" [n,b]
 
 type ProcessList = TVar [PHandle]
 
@@ -96,9 +97,17 @@ server plist flag (ip, socket) = do
   {-atomically $ readTVar flag >>= check-}
 
 main = do
-  psList <- newTVarIO []
-  serverStop <- newTVarIO False
-  forkIO $ server psList serverStop addr
-  printWorkerStatus psList
+  tst $ CreateUser "foo" 
+  tst $ RenameUser "foo" "bob"
+  tst $ RemoveUser "bob"
+  {-psList <- newTVarIO []-}
+  {-printWorkerStatus psList-}
+  {-sequence_ $ startWorker psList <$> [CreateUser (x:[]) | x <- ['a'..'g']]-}
+  {-serverStop <- newTVarIO False-}
+  {-forkIO $ server psList serverStop addr-}
+  {-printWorkerStatus psList-}
+  {-where-}
+    {-addr = (Host "127.0.0.1","9000")-}
   where
-    addr = (Host "127.0.0.1","9000")
+    startWorker ps cmd = forkIO $ worker ps cmd
+    tst cmd = runWorker cmd >>= waitForProcess . view pHandle
