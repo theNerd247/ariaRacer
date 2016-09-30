@@ -40,16 +40,16 @@ parseRename =
 parseCMD :: Int -> BS.ByteString -> Parser [String]
 parseCMD n cmdName = do
   string cmdName
-  wds <- sequence $ replicate n word
+  wds <- count n word
   return $ BS8.unpack <$> wds
   
 space = word8 32
 
 word :: Parser BS.ByteString
 word = do
-  many1 space
+  many space
   cs <- many1 $ satisfy isChar
-  many' space
+  many space
   return $ BS.pack cs
   where
     isChar x = 
