@@ -22,35 +22,46 @@ import Control.Concurrent.STM
 import System.Exit
 import Parser
 import Commands
-import Data.List (intersperse)
+import Data.List (intersperse,delete)
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as CR
 
-data PHandle = PHandle {_pHandle :: ProcessHandle, _pName :: String}
-
-makeLenses ''PHandle
-
-executeFile :: FilePath -> [String] -> IO PHandle
-executeFile file args = PHandle <$> runcmd <*> (pure file)
-  where
-    runcmd = createProcess arProccess >>= return . view _4
-    arProccess = (proc file args) {cwd = Just "/home/noah/src/com/ariaRacer/scripts"}
-
-runWorker :: ARCommand -> IO PHandle
-runWorker (CreateUser n) = executeFile "create_user.sh" [n]
-runWorker (RemoveUser n) = executeFile "remove_user.sh" [n]
-runWorker (RenameUser n1 n2) = executeFile "rename_user.sh" [n1,n2]
-runWorker (BuildUser n b) = executeFile "build_user.sh" [n,b]
+data PHandle = PHandle {_pHandle :: ProcessHandle, _pID :: Int}
 
 type ProcessList = TVar [PHandle]
 
 type Address = (HostPreference,ServiceName)
 
+type PIDCounter = TVar Int
+
+makeLenses ''PHandle
+
+instance Eq PHandle where
+  p1 == p2 = p1 ^. pID == p2 ^. pID
+
+executeFile :: FilePath -> [String] -> IO ProcessHandle
+executeFile file args = do 
+  putStrLn $ "Starting thread: " ++ file ++ " " ++ (mconcat $ intersperse " " args)
+  createProcess arProccess >>= return . view _4
+  where
+    arProccess = (proc file args) {cwd = Just "/home/noah/src/com/ariaRacer/scripts"}
+
+runWorker :: ARCommand -> IO ProcessHandle
+runWorker (CreateUser n) = executeFile "create_user.sh" [n]
+runWorker (RemoveUser n) = executeFile "remove_user.sh" [n]
+runWorker (RenameUser n1 n2) = executeFile "rename_user.sh" [n1,n2]
+runWorker (BuildUser n b) = executeFile "build_user.sh" [n,b]
+
 -- | Run a worker and save its process handle for later
-worker :: ProcessList -> ARCommand -> IO ()
-worker pHandles act = do 
-  phandle <- runWorker act
-  atomically $ modifyTVar pHandles (phandle:)
+worker :: ProcessList -> PIDCounter -> ARCommand -> IO ThreadId
+worker pHandles pidcnt act = flip forkFinally removePHandle $ do 
+  phandle <- PHandle <$> runWorker act <*> (atomically genPID)
+  atomically $ modifyTVar pHandles (phandle:) 
+  return phandle
+  where
+    genPID = modifyTVar pidcnt (+1) >> readTVar pidcnt
+    removePHandle (Left _) = return ()
+    removePHandle (Right ph) = atomically $ modifyTVar pHandles (delete ph)
 
 printWorkerStatus :: ProcessList -> IO ()
 printWorkerStatus plist = forever $ do 
@@ -59,7 +70,7 @@ printWorkerStatus plist = forever $ do
   where 
     printProcess phndl = do
       s <- getProcessExitCode $ phndl ^. pHandle
-      putStrLn $ "Process " ++ (phndl ^. pName) ++ " " ++ (printStatus s)
+      putStrLn $ "Process " ++ (show $ phndl ^. pID) ++ " " ++ (printStatus s)
     printStatus Nothing = "is running"
     printStatus (Just ExitSuccess) = "finished!"
     printStatus (Just (ExitFailure c)) = "failed with exit code: " ++ (show c)
@@ -69,8 +80,8 @@ printWorkerStatus plist = forever $ do
 -- upon success. Error codes are: 
 -- 100 - failed to read from socket
 -- 101 - failed to parse command
-respondToServer :: ProcessList -> (Socket, SockAddr) -> IO ()
-respondToServer plist (socket, addr) = do 
+respondToServer :: ProcessList -> PIDCounter -> (Socket, SockAddr) -> IO ()
+respondToServer plist pidcnt (socket, addr) = do 
   dt <- recv socket 1024 
   handleData dt
   where
@@ -83,31 +94,22 @@ respondToServer plist (socket, addr) = do
       sendCode 101
     launchWorker cmd = do 
       putStrLn $ "Launching worker: " ++ (show cmd)
-      worker plist cmd 
+      worker plist pidcnt cmd 
       sendCode 255
     sendCode :: Int -> IO ()
     sendCode = send socket . CR.encode
 
-
 -- | Starts up the TCP server and blocks until the stop flag is raised
-server :: ProcessList -> TVar Bool -> Address -> IO ()
-server plist flag (ip, socket) = do
-  forkIO $ serve ip socket $ respondToServer plist
+server :: ProcessList -> PIDCounter -> TVar Bool -> Address -> IO ()
+server plist pidcnt flag (ip, socket) = do
+  serve ip socket $ respondToServer plist pidcnt
   return ()
   {-atomically $ readTVar flag >>= check-}
 
 main = do
-  tst $ CreateUser "foo" 
-  tst $ RenameUser "foo" "bob"
-  tst $ RemoveUser "bob"
-  {-psList <- newTVarIO []-}
-  {-printWorkerStatus psList-}
-  {-sequence_ $ startWorker psList <$> [CreateUser (x:[]) | x <- ['a'..'g']]-}
-  {-serverStop <- newTVarIO False-}
-  {-forkIO $ server psList serverStop addr-}
-  {-printWorkerStatus psList-}
-  {-where-}
-    {-addr = (Host "127.0.0.1","9000")-}
+  psList <- newTVarIO []
+  pidcnt <- newTVarIO 0
+  serverStop <- newTVarIO False
+  server psList pidcnt serverStop addr
   where
-    startWorker ps cmd = forkIO $ worker ps cmd
-    tst cmd = runWorker cmd >>= waitForProcess . view pHandle
+    addr = (Host "127.0.0.1","9000")

@@ -43,7 +43,6 @@ parseCMD n cmdName = do
   wds <- sequence $ replicate n word
   return $ BS8.unpack <$> wds
   
-
 space = word8 32
 
 word :: Parser BS.ByteString
