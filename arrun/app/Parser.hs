@@ -19,7 +19,7 @@ import Data.Attoparsec.ByteString
 import Control.Applicative
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import Commands
+import Data.ARCommands
 
 parseCommand :: BS.ByteString -> Either String ARCommand
 parseCommand = parseOnly cmdParser

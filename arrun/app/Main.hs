@@ -20,9 +20,10 @@ import Control.Lens
 import Network.Simple.TCP
 import Control.Concurrent.STM
 import System.Exit
-import Parser
-import Commands
+{-import Parser-}
+import Data.ARCommands
 import Data.List (intersperse,delete)
+import Data.Serialize
 import qualified Data.ByteString as BS
 import qualified Data.Serialize as CR
 
@@ -88,7 +89,7 @@ respondToServer plist pidcnt (socket, addr) = do
     handleData Nothing = do 
       putStrLn $ "Connection was closed - no data recieved" 
       sendCode 100
-    handleData (Just dt) = either (printError dt) launchWorker $ parseCommand dt
+    handleData (Just dt) = either (printError dt) launchWorker $ decode dt
     printError dt s = do 
       putStrLn $ "Failed to parse data: " ++ (show dt) ++ " " ++ s
       sendCode 101
