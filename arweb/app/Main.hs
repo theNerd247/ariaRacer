@@ -23,6 +23,7 @@ main = do
     msum
       [ dir "home" $ (ok $ toResponse userPage)
       , dir "tour" $ (ok $ toResponse tournamentPage)
+      , dir "admin" $ (ok $ toResponse adminPage)
       , defaultResponse serverPath
       ]
   where

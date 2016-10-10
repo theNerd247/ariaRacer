@@ -18,5 +18,3 @@ function log
 		set -x
 	fi
 }
-
-

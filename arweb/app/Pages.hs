@@ -14,14 +14,13 @@ module Pages
   ( pageTemplate
   , userPage
   , tournamentPage
+  , adminPage
   ) where
 
 import Data.Text
-import Html.Templates.Components
-import Html.Templates.User
-import Html.Templates.Tournament
 import Text.Blaze.Html ((!))
 import Control.Lens
+import Html.Templates
 import qualified Text.Blaze.Html5 as Html
 import qualified Text.Blaze.Html5.Attributes as HtmlA
 import qualified Text.Blaze.Bootstrap as BHtml
@@ -30,6 +29,8 @@ userPage = pageTemplate $ Page "Home" (Just userNavbar) userPageTemplate
 
 tournamentPage =
   pageTemplate $ Page "Tournament" (Just userNavbar) tournamentPageTemplate 
+
+adminPage = pageTemplate $ Page "Admin" Nothing adminPageTemplate
 
 bootstrapCSS :: Html.AttributeValue
 bootstrapCSS = "css/bootstrap.min.css"

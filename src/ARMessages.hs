@@ -13,6 +13,7 @@ Message interface to the backend server
 
 module ARMessages
 (
+  sendCommand
 )
 where
 
