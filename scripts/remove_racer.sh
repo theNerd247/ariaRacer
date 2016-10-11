@@ -1,9 +1,7 @@
 #!/bin/bash
 
-. log
-
 if [[ -z $1 ]]; then
-	log "bad call to remove_user.sh"
+	echo "bad call to remove_user.sh" 1>&2
 	exit 1
 fi
 
@@ -11,7 +9,7 @@ user=$1
 
 if [[ -d $user ]]; then
 	rm -rf $user
-	log "removed user: $user"
+	echo "removed user: $user" 1>&2
 	exit 0
 fi
 

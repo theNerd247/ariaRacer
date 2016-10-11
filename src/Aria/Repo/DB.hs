@@ -87,6 +87,7 @@ getScriptConfig = _scriptConfig <$> ask
 $(makeAcidic
     ''RepoDBState
     [ 'upsertRacer
+    , 'insertRacer
     , 'getRacerById
     , 'getRacerByName
     , 'removeRacer

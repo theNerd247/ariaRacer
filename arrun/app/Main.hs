@@ -23,7 +23,8 @@ import Happstack.Server
 import Web.Routes
 import Web.Routes.Happstack
 import Control.Monad.Catch
-import Text.Blaze ((!),string)
+import Text.Blaze ((!), string)
+import Data.Monoid ((<>))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Aria.Scripts as AS
@@ -64,35 +65,45 @@ instance H.ToMarkup UTCTime where
   toMarkup = H.toHtml . show
 
 instance H.ToMarkup AS.ScriptLogData where
-  toMarkup logData = H.div ! A.class_ "arscript-log-data" $ do
-    H.div ! A.class_ "arscript-command" $ do 
-      H.span ! A.class_ "cmd" $ H.toHtml . show $ (logData ^. scriptCmd)
-      " "
-      H.span ! A.class_ "exitcode" $ H.toHtml . show $ (logData ^. exitCode)
-      " "
-      H.span ! A.class_ "file" $ H.toHtml . show $ (logData ^. scriptFile)
-      " "
-      H.span ! A.class_ "args" $ mconcat . fmap H.toHtml . intersperse " " $ (logData ^. scriptArgs)
-    H.div ! A.class_ "arscript-rundata" $ do 
-      H.div ! A.class_ "arscript-runtimes" $ do
-        H.span ! A.class_ "startTime" $ H.toHtml $ (logData ^. scriptStartTime)
-        " - "
-        H.span ! A.class_ "endTime" $ H.toHtml $ (logData ^. scriptEndTime)
-      H.div ! A.class_ "arscript-pipes" $ do
-        H.div ! A.class_ "stdout" $ H.pre $ H.toHtml $ (logData ^. stdOut)
-        H.div ! A.class_ "stderr" $ H.pre $ H.toHtml $ (logData ^. stdErr)
+  toMarkup logData =
+    H.div ! A.class_ "arscript-log-data" $
+    do H.div ! A.class_ "arscript-command" $
+         do H.span ! A.class_ "cmd" $ H.toHtml . show $ (logData ^. scriptCmd)
+            " "
+            H.span ! A.class_ "exitcode" $
+              H.toHtml . show $ (logData ^. exitCode)
+            " "
+            H.span ! A.class_ "file" $ H.toHtml . show $ (logData ^. scriptFile)
+            " "
+            H.span ! A.class_ "args" $
+              mconcat . fmap H.toHtml . intersperse " " $
+              (logData ^. scriptArgs)
+       H.div ! A.class_ "arscript-rundata" $
+         do H.div ! A.class_ "arscript-runtimes" $
+              do H.span ! A.class_ "startTime" $
+                   H.toHtml $ (logData ^. scriptStartTime)
+                 " - "
+                 H.span ! A.class_ "endTime" $
+                   H.toHtml $ (logData ^. scriptEndTime)
+            H.div ! A.class_ "arscript-pipes" $
+              do H.div ! A.class_ "stdout" $
+                   do H.span $ "stdout" <> H.br <> "---------"
+                      H.pre $ H.toHtml $ (logData ^. stdOut)
+                 H.div ! A.class_ "stderr" $
+                   do H.span $ "stderr" <> H.br <> "---------"
+                      H.pre $ H.toHtml $ (logData ^. stdErr)
 
 newRacerHndl :: Racer -> ARRunApp Response
-newRacerHndl r =
-  (lift $ newRacer r >>= ok . toResponse) `catch`
-  (\(ScriptError log) -> ok . toResponse $ log)
+newRacerHndl r = lift $ newRacer r >>= ok . toResponse 
 
 showScriptLogs :: ARRunApp Response
-showScriptLogs = lift getScriptLogs >>= ok . toResponse . H.toHtml 
+showScriptLogs = lift getScriptLogs >>= ok . toResponse . H.toHtml
 
-removeRacerHndl = undefined
+removeRacerHndl :: RacerId -> ARRunApp Response
+removeRacerHndl rid = lift $ deleteRacer rid >>= ok . toResponse
 
-buildRacerHndl = undefined
+buildRacerHndl :: RacerId -> CodeRevision -> ARRunApp Response
+buildRacerHndl rid rev = lift $ buildRacer rid rev >>= ok . toResponse 
 
 route :: Route -> ARRunApp Response
 route r = do
@@ -101,6 +112,9 @@ route r = do
     (DelRacer rid) -> removeRacerHndl rid
     (BuildRacer rid rev) -> buildRacerHndl rid rev
     ScriptLogs -> showScriptLogs
+  `catch`
+    (\(ScriptError log) -> ok . toResponse $ log)
+
 
 initRepo :: RepoDBState
 initRepo =
@@ -111,6 +125,7 @@ initRepo =
   , _scriptConfig =
     AS.ScriptConfig
     { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
+    , AS._scriptCwd = "/tmp/arrun"
     }
   }
 

@@ -1,9 +1,7 @@
 #!/bin/bash
 
-. log
-
 if (( $# != 2 )); then
-	log "bad build_user call: $@"
+	echo "bad build_user call: $@" 1>&2
 	exit 1
 fi
 
@@ -11,11 +9,11 @@ user=$1
 sha=$2
 
 if [[ ! -d $user ]]; then
-	log "build_user user doesn't exist: $user"
+	echo "build_user user doesn't exist: $user" 1>&2
 	exit 2
 fi
 
-log "starting build for user $user for $sha"
+echo "starting build for user $user for $sha" 1>&2
 set -x
 set -e
 
@@ -26,7 +24,6 @@ fi
 cd $user
 
 git reset --hard master
-git pull origin master
 git checkout $sha
 mkdir -p build
 cd build

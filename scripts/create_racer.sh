@@ -1,22 +1,20 @@
 #!/bin/bash
 
-. log
-. arserver.conf
-
 if (( $# != 1 )); then
-	log "bad new_user call: $@"
+	echo "bad new_user call: $@" 1>&2
 	exit 1
 fi
 
 user=$1
 
 if [[ -d $user ]]; then
-	log "user already exists: $user"
+	echo "user already exists: $user" 1>&2
 	exit 0
 fi
 
-log "creating user: $user"
+echo "creating user: $user" 1>&2
 
+set -e
 set -x 
 cp -r skel $user
 cd $user
@@ -24,4 +22,4 @@ git init
 git add -A
 git commit -m "init repo"
 
-log "user created: $user"
+echo "user created: $user" 1>&2

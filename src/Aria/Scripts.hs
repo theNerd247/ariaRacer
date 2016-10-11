@@ -21,11 +21,13 @@ import Data.Time (UTCTime(..), getCurrentTime)
 import qualified Data.ByteString.Lazy as BSL
 
 data ScriptConfig = ScriptConfig
-  { _scriptBasePath :: FilePath
+  { _scriptBasePath :: FilePath -- ^ the location of the script files. 
+  , _scriptCwd :: FilePath -- ^ the location to execute the script files in. This is assumed to be the location of the git repositories the user creates
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 data ScriptCommand
-  = BuildRacer RacerId CodeRevision
+  = BuildRacer RacerId
+               CodeRevision
   | CreateRacer RacerId
   | RemoveRacer RacerId
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
@@ -38,7 +40,7 @@ data ScriptLogData = ScriptLogData
   , _scriptArgs :: [String]
   , _stdErr :: String
   , _stdOut :: String
-  , _exitCode :: ReturnCode 
+  , _exitCode :: ReturnCode
   , _scriptCmd :: ScriptCommand
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
@@ -53,8 +55,10 @@ makeLenses ''ScriptConfig
 
 makeLenses ''ScriptLogData
 
-$(deriveSafeCopy 0 'base ''ScriptConfig)
+$(deriveSafeCopy 1 'base ''ScriptConfig)
+
 $(deriveSafeCopy 0 'base ''ScriptLogData)
+
 $(deriveSafeCopy 1 'base ''ScriptCommand)
 
 -- | A script is mapped to a type by the command that it will run and the
@@ -63,18 +67,31 @@ class Script a  where
   script :: a -> (FilePath, [String])
 
 instance Script ScriptCommand where
-  script (BuildRacer (RacerId i) rev) = ("build_racer.sh", [show i,show rev])
+  script (BuildRacer (RacerId i) rev) = ("build_racer.sh", [show i, rev])
   script (CreateRacer (RacerId i)) = ("create_racer.sh", [show i])
   script (RemoveRacer (RacerId i)) = ("remove_racer.sh", [show i])
 
 -- | Run the command and log the result
 runScript :: ScriptCommand -> ScriptApp m ReturnCode
 runScript cmd = do
-  let (cPath,args) = script cmd
-  sTime <- liftIO getCurrentTime
+  let (cPath, args) = script cmd
+  -- get the script base path and working directory from config
   cmdPath <- ((</> cPath) . _scriptBasePath) <$> ask
-  (out, stdout, stderr) <- liftIO $ readProcessWithExitCode cmdPath args ""
+  runPath <- _scriptCwd <$> ask
+  -- create the process command
+  let scriptProcess =
+        (proc cmdPath args)
+        { cwd = Just runPath
+        }
+  -- get the start time
+  sTime <- liftIO getCurrentTime
+  -- start the script & block until it's finished
+  -- TODO: replace with a watchdog system
+  (out, stdout, stderr) <-
+    liftIO $ readCreateProcessWithExitCode scriptProcess ""
+  -- get the finish time
   eTime <- liftIO getCurrentTime
+  -- generate the log and return
   let rCode = toReturnCode out
   tell
     [ ScriptLogData
@@ -97,4 +114,4 @@ toReturnCode (ExitFailure i) = i
 runScriptCommand
   :: (MonadIO m)
   => ScriptConfig -> ScriptCommand -> m (ReturnCode, ScriptLog)
-runScriptCommand config = flip runReaderT config . runWriterT . runScript 
+runScriptCommand config = flip runReaderT config . runWriterT . runScript

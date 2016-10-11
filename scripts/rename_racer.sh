@@ -1,12 +1,10 @@
 #!/bin/bash
 
-. log
-
 if (( $# != 2 )); then
-	log "bad call to rename_user.sh: $@"
+	echo "bad call to rename_user.sh: $@" 1>&2
 	exit 1
 fi
 
-log "renamin user $1 to $2"
+echo "renamin user $1 to $2" 1>&2
 remove_user.sh $1
 create_user.sh $2

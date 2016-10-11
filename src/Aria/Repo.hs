@@ -53,7 +53,7 @@ newRacer
   => Racer -> RepoApp m RacerId
 newRacer racer = do
   acid <- get
-  rid <- update' acid (UpsertRacer racer)
+  rid <- update' acid (InsertRacer racer)
   runScript (AS.CreateRacer rid)
   return rid
 

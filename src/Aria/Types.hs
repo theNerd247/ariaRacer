@@ -12,7 +12,7 @@ import GHC.Generics
 
 type Repository = FilePath
 
-type CodeRevision = Int
+type CodeRevision = String
 
 newtype RacerId = RacerId
   { _unRacerId :: Integer
