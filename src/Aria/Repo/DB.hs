@@ -5,6 +5,7 @@
 module Aria.Repo.DB where
 
 import Aria.Types
+import qualified Aria.Scripts as AS
 import Control.Lens
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
@@ -18,23 +19,16 @@ import qualified Data.IxSet as IxSet
 
 type RepoDB = IxSet Racer
 
-data RepoConfig = RepoConfig
-  { _baseRepoPath :: FilePath
-  } deriving (Eq, Ord, Show, Read, Data, Typeable)
-
 data RepoDBState = RepoDBState
   { _racerDB :: RepoDB
   , _nextRacerId :: RacerId
-  , _dbConfig :: RepoConfig
+  , _scriptLog :: AS.ScriptLog
+  , _scriptConfig :: AS.ScriptConfig
   } deriving (Eq, Ord, Show, Data, Typeable)
-
-makeLenses ''RepoConfig
-
-$(deriveSafeCopy 0 'base ''RepoConfig)
 
 makeLenses ''RepoDBState
 
-$(deriveSafeCopy 0 'base ''RepoDBState)
+$(deriveSafeCopy 1 'base ''RepoDBState)
 
 instance IxSet.Indexable Racer where
   empty =
@@ -45,9 +39,6 @@ instance IxSet.Indexable Racer where
       
 emptyRacerDB :: RepoDB
 emptyRacerDB = IxSet.empty
-
-getRepoConfig :: Query RepoDBState RepoConfig
-getRepoConfig = _dbConfig <$> ask
 
 -- | Inserts a new racer if DNE. Otherwise the existing racer is updated
 upsertRacer :: Racer -> Update RepoDBState RacerId
@@ -82,11 +73,24 @@ getRacerBy
   => k -> Query RepoDBState (Maybe Racer)
 getRacerBy x = (_racerDB <$> ask) >>= return . getOne . getEQ x
 
+getScriptLog :: Query RepoDBState AS.ScriptLog
+getScriptLog = _scriptLog <$> ask
+
+addScriptLog :: AS.ScriptLog -> Update RepoDBState AS.ScriptLog
+addScriptLog log = do 
+  modify (scriptLog %~ (log++))
+  _scriptLog <$> get
+
+getScriptConfig :: Query RepoDBState AS.ScriptConfig
+getScriptConfig = _scriptConfig <$> ask
+
 $(makeAcidic
     ''RepoDBState
     [ 'upsertRacer
     , 'getRacerById
     , 'getRacerByName
-    , 'getRepoConfig
     , 'removeRacer
+    , 'getScriptLog
+    , 'addScriptLog
+    , 'getScriptConfig
     ])

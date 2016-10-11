@@ -6,12 +6,11 @@ module Aria.Types where
 import Data.Text
 import Data.Data
 import Data.SafeCopy
-import Data.FileStore (RevisionId)
 import Control.Lens
 
 type Repository = FilePath
 
-type CodeRevision = RevisionId
+type CodeRevision = Int
 
 newtype RacerId = RacerId
   { _unRacerId :: Integer

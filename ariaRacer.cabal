@@ -19,20 +19,23 @@ library
                      , Aria.Types
                      , Aria.Repo
                      , Data.Acid.Run
+                     , Aria.Scripts
   build-depends:       base
-                     , lens
-                     , ixset
-                     , time
-                     , containers
-                     , mtl
-                     , transformers
                      , acid-state
+                     , bytestring
                      , cereal
-                     , filestore
-                     , filepath
+                     , containers
                      , directory
-                     , text
+                     , exceptions
+                     , filepath
+                     , ixset
+                     , lens
+                     , mtl
+                     , process
                      , safecopy
+                     , text
+                     , time
+                     , transformers
 
   default-language:    Haskell2010
 

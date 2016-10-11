@@ -1,43 +1,59 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Aria.Repo where
 
-import Aria.Types
 import Aria.Repo.DB
+import Aria.Types
+import Control.Exception
+import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.State
 import Data.Acid
 import Data.Acid.Advanced
-import Data.FileStore
+import Data.Data
+import Data.Monoid ((<>))
 import System.FilePath ((</>))
-import System.Directory (removeDirectory)
+import qualified Aria.Scripts as AS
 
 type RepoAppState = AcidState RepoDBState
 
-type RepoApp m a = (Monad m, MonadIO m) =>
+type RepoApp m a = (MonadThrow m, MonadIO m) =>
                    StateT RepoAppState m a
 
-getRacerRepo :: RacerId -> RepoApp m FileStore
-getRacerRepo = fmap gitFileStore . getRacerRepoPath
+data ScriptError =
+  ScriptError AS.ScriptCommand
+              AS.ReturnCode
+  deriving (Read, Show, Ord, Eq, Data, Typeable)
 
-getRacerRepoPath :: RacerId -> RepoApp m FilePath
-getRacerRepoPath rid = do
-  acid <- get
-  basePath <- _baseRepoPath <$> query' acid GetRepoConfig
-  return $ basePath </> (show $ _unRacerId rid) 
+instance Exception ScriptError
 
 newRacer :: Racer -> RepoApp m RacerId
 newRacer racer = do
   acid <- get
   rid <- update' acid (UpsertRacer racer)
-  repo <- getRacerRepo rid
-  liftIO $ initialize repo
+  runScript (AS.CreateRacer rid)
   return rid
 
 deleteRacer :: RacerId -> RepoApp m ()
 deleteRacer rid = do
   acid <- get
-  repo <- getRacerRepoPath rid
   update' acid (RemoveRacer rid)
-  liftIO $ removeDirectory repo
+  runScript (AS.RemoveRacer rid)
+
+buildRacer :: RacerId -> CodeRevision -> RepoApp m ()
+buildRacer rid rev = do
+  acid <- get
+  runScript (AS.BuildRacer rid rev)
+
+runScript :: AS.ScriptCommand-> RepoApp m ()
+runScript cmd = do
+  acid <- get
+  config <- query' acid GetScriptConfig
+  (out, log) <- AS.runScriptCommand config cmd
+  update' acid (AddScriptLog log)
+  case out of
+    0 -> return ()
+    c -> throwM $ ScriptError cmd c
