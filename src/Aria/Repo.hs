@@ -3,7 +3,26 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Aria.Repo where
+module Aria.Repo
+  ( newRacer
+  , deleteRacer
+  , buildRacer
+  , getScriptLogs
+  , AS.scriptBasePath
+  , AS.scriptStartTime
+  , AS.scriptEndTime
+  , AS.scriptFile
+  , AS.scriptArgs
+  , AS.stdErr
+  , AS.stdOut
+  , AS.exitCode
+  , AS.scriptCmd
+  , RepoAppState(..)
+  , RepoApp(..)
+  , ScriptError(..)
+  , RepoDB
+  , RepoDBState(..)
+  ) where
 
 import Aria.Repo.DB
 import Aria.Types
@@ -52,6 +71,11 @@ buildRacer
 buildRacer rid rev = do
   acid <- get
   runScript (AS.BuildRacer rid rev)
+
+getScriptLogs
+  :: (MonadIO m, Monad m)
+  => RepoApp m AS.ScriptLog
+getScriptLogs = get >>= \acid -> query' acid GetScriptLog
 
 -- | Run the given script command. Upon an ExitFailure throw a ScriptError exception
 runScript

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+pwd
+exit 0
+
 . log
 . arserver.conf
 

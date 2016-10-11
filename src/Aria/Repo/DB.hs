@@ -42,7 +42,7 @@ emptyRacerDB = IxSet.empty
 
 -- | Inserts a new racer if DNE. Otherwise the existing racer is updated
 upsertRacer :: Racer -> Update RepoDBState RacerId
-upsertRacer r = liftQuery (getRacerById (r ^. racerId)) >>= maybe (insertRacer r) updateRacer
+upsertRacer r = liftQuery (getRacerById (r ^. racerId)) >>= maybe (insertRacer r) updateRacer 
 
 insertRacer :: Racer -> Update RepoDBState RacerId
 insertRacer r = do

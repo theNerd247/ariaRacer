@@ -65,10 +65,14 @@ executable arrun
                      , happstack-server
                      , safecopy
                      , mtl
+                     , blaze-markup
                      , exceptions
                      , cereal
+                     , lens
                      , text
+                     , blaze-html
                      , transformers
+                     , time
                      , web-routes
                      , web-routes-happstack
 
