@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Aria.Scripts where
 
@@ -12,6 +13,7 @@ import Control.Lens
 import Control.Monad.IO.Class
 import Control.Monad.Writer
 import Control.Monad.Reader
+import GHC.Generics
 import System.Exit (ExitCode(..))
 import System.Process
 import System.FilePath ((</>))
@@ -26,7 +28,7 @@ data ScriptCommand
   = BuildRacer RacerId CodeRevision
   | CreateRacer RacerId
   | RemoveRacer RacerId
-  deriving (Read, Show, Ord, Eq, Data, Typeable)
+  deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
 -- | Log pretty much everything that a script does
 data ScriptLogData = ScriptLogData
@@ -37,6 +39,7 @@ data ScriptLogData = ScriptLogData
   , _stdErr :: String
   , _stdOut :: String
   , _exitCode :: ReturnCode 
+  , _scriptCmd :: ScriptCommand
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 type ReturnCode = Int
@@ -65,12 +68,13 @@ instance Script ScriptCommand where
   script (RemoveRacer (RacerId i)) = ("remove_racer.sh", [show i])
 
 -- | Run the command and log the result
-runScript :: FilePath -> [String] -> ScriptApp m ReturnCode
-runScript cmd args = do
+runScript :: ScriptCommand -> ScriptApp m ReturnCode
+runScript cmd = do
+  let (cPath,args) = script cmd
   sTime <- liftIO getCurrentTime
-  cmdPath <- ((</> cmd) . _scriptBasePath) <$> ask
+  cmdPath <- ((</> cPath) . _scriptBasePath) <$> ask
   (out, stdout, stderr) <- liftIO $ readProcessWithExitCode cmdPath args ""
-  eTime <- liftIO $ getCurrentTime
+  eTime <- liftIO getCurrentTime
   let rCode = toReturnCode out
   tell
     [ ScriptLogData
@@ -81,6 +85,7 @@ runScript cmd args = do
       , _exitCode = rCode
       , _scriptFile = cmdPath
       , _scriptArgs = args
+      , _scriptCmd = cmd
       }
     ]
   return rCode
@@ -90,6 +95,6 @@ toReturnCode ExitSuccess = 0
 toReturnCode (ExitFailure i) = i
 
 runScriptCommand
-  :: (MonadIO m, Script a)
-  => ScriptConfig -> a -> m (ReturnCode, ScriptLog)
-runScriptCommand config = flip runReaderT config . runWriterT . uncurry runScript . script
+  :: (MonadIO m)
+  => ScriptConfig -> ScriptCommand -> m (ReturnCode, ScriptLog)
+runScriptCommand config = flip runReaderT config . runWriterT . runScript 

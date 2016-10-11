@@ -1,6 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Aria.Repo where
 
@@ -20,35 +21,42 @@ import qualified Aria.Scripts as AS
 
 type RepoAppState = AcidState RepoDBState
 
-type RepoApp m a = (MonadThrow m, MonadIO m) =>
-                   StateT RepoAppState m a
+type RepoApp = StateT RepoAppState
 
 data ScriptError =
-  ScriptError AS.ScriptCommand
-              AS.ReturnCode
+  ScriptError AS.ScriptLog
   deriving (Read, Show, Ord, Eq, Data, Typeable)
 
 instance Exception ScriptError
 
-newRacer :: Racer -> RepoApp m RacerId
+newRacer
+  :: (MonadIO m, MonadThrow m)
+  => Racer -> RepoApp m RacerId
 newRacer racer = do
   acid <- get
   rid <- update' acid (UpsertRacer racer)
   runScript (AS.CreateRacer rid)
   return rid
 
-deleteRacer :: RacerId -> RepoApp m ()
+deleteRacer
+  :: (MonadIO m, MonadThrow m)
+  => RacerId -> RepoApp m ()
 deleteRacer rid = do
   acid <- get
   update' acid (RemoveRacer rid)
   runScript (AS.RemoveRacer rid)
 
-buildRacer :: RacerId -> CodeRevision -> RepoApp m ()
+buildRacer
+  :: (MonadIO m, MonadThrow m)
+  => RacerId -> CodeRevision -> RepoApp m ()
 buildRacer rid rev = do
   acid <- get
   runScript (AS.BuildRacer rid rev)
 
-runScript :: AS.ScriptCommand-> RepoApp m ()
+-- | Run the given script command. Upon an ExitFailure throw a ScriptError exception
+runScript
+  :: (MonadIO m, MonadThrow m)
+  => AS.ScriptCommand -> RepoApp m ()
 runScript cmd = do
   acid <- get
   config <- query' acid GetScriptConfig
@@ -56,4 +64,4 @@ runScript cmd = do
   update' acid (AddScriptLog log)
   case out of
     0 -> return ()
-    c -> throwM $ ScriptError cmd c
+    c -> throwM $ ScriptError log
