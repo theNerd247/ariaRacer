@@ -15,7 +15,6 @@ if [[ ! -d $user ]]; then
 	exit 2
 fi
 
-
 log "starting build for user $user for $sha"
 set -x
 set -e
