@@ -4,35 +4,30 @@
 
 module Main where
 
-import Data.Acid.Run
-import Aria.Repo
-import Aria.Repo.DB
-import Aria.Types
-import Control.Monad.State
-import qualified Aria.Scripts as AS
+import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM.TQueue
+import Data.Array
+import Control.Monad
 
-testRacer :: Racer
-testRacer =
-  Racer
-  { _racerName = "Bob"
-  , _racerId = RacerId 7
-  }
+import Thread.Pool
 
-initRepo :: RepoDBState
-initRepo =
-  RepoDBState
-  { _racerDB = emptyRacerDB
-  , _nextRacerId = RacerId 1
-  , _scriptLog = []
-  , _scriptConfig =
-    AS.ScriptConfig
-    { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
-    }
-  }
+app :: Int -> IO ()
+app n = do
+  threadDelay 500
+  putStrLn $ "Foo: " ++ (show n)
+  threadDelay 500
 
 main :: IO ()
-main =
-  withAcid (Just "/tmp/_state") initRepo $
-  \acid -> do
-    rid <- flip evalStateT acid $ newRacer testRacer
-    putStrLn $ "Created Racer" ++ (show rid)
+main = do
+  putStrLn "Starting pool"
+  p <- startPool 3
+  let runApp n = addJob p (app n)
+  {-let js = jobs p-}
+  forM_ [1..3] runApp
+  forever $ return ()
+  {-forever $ do -}
+    {-j <- atomically $ readTChan js-}
+    {-return ()-}
+    {-putStrLn . show $ j-}
