@@ -5,7 +5,6 @@
 module Aria.Repo.DB where
 
 import Aria.Types
-import qualified Aria.Scripts as AS
 import Control.Lens
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
@@ -16,6 +15,7 @@ import Data.Acid.Local (createCheckpointAndClose)
 import Data.Data
 import Data.Text (Text(..))
 import qualified Data.IxSet as IxSet
+import qualified Aria.Scripts as AS
 
 type RepoDB = IxSet Racer
 

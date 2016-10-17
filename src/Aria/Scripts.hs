@@ -27,7 +27,7 @@ data ScriptConfig = ScriptConfig
 
 data ScriptCommand
   = BuildRacer RacerId
-               CodeRevision
+               SHA
   | CreateRacer RacerId
   | RemoveRacer RacerId
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)

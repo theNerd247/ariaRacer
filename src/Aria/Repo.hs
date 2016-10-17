@@ -67,7 +67,7 @@ deleteRacer rid = do
 
 buildRacer
   :: (MonadIO m, MonadThrow m)
-  => RacerId -> CodeRevision -> RepoApp m ()
+  => RacerId -> SHA -> RepoApp m ()
 buildRacer rid rev = do
   acid <- get
   runScript (AS.BuildRacer rid rev)

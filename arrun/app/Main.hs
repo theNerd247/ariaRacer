@@ -10,10 +10,11 @@ module Main where
 import Aria.Repo
 import Aria.Repo.DB
 import Aria.Types
+import Aria.Routes
 import Data.SafeCopy
 import Data.Data
 import Data.Acid.Run
-import Data.Time (UTCTime(..))
+import Data.Acid.Advanced
 import Data.Serialize.Put
 import Data.List (intersperse)
 import Control.Monad.Trans.Class (lift)
@@ -23,98 +24,46 @@ import Happstack.Server
 import Web.Routes
 import Web.Routes.Happstack
 import Control.Monad.Catch
-import Text.Blaze ((!), string)
-import Data.Monoid ((<>))
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Html (toHtml)
+import HtmlTemplates
+import Forms
 import qualified Aria.Scripts as AS
 
 type ARRunApp = RouteT Route (RepoApp (ServerPartT IO))
 
-data Route
-  = NewRacer Racer
-  | DelRacer RacerId
-  | BuildRacer RacerId
-               CodeRevision
-  | ScriptLogs
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-instance PathInfo RacerId
-
-instance PathInfo Racer
-
-instance PathInfo Route
-
-instance ToMessage Racer where
-  toMessage = runPutLazy . safePut
-
-instance ToMessage RacerId where
-  toMessage = runPutLazy . safePut
-
-instance (ToMessage a, SafeCopy a) =>
-         ToMessage [a] where
-  toMessage = mconcat . fmap (runPutLazy . safePut)
-
-instance ToMessage AS.ScriptLogData where
-  toMessage = runPutLazy . safePut
-
-instance H.ToMarkup AS.ScriptLog where
-  toMarkup = H.toHtml . fmap H.toHtml
-
-instance H.ToMarkup UTCTime where
-  toMarkup = H.toHtml . show
-
-instance H.ToMarkup AS.ScriptLogData where
-  toMarkup logData =
-    H.div ! A.class_ "arscript-log-data" $
-    do H.div ! A.class_ "arscript-command" $
-         do H.span ! A.class_ "cmd" $ H.toHtml . show $ (logData ^. scriptCmd)
-            " "
-            H.span ! A.class_ "exitcode" $
-              H.toHtml . show $ (logData ^. exitCode)
-            " "
-            H.span ! A.class_ "file" $ H.toHtml . show $ (logData ^. scriptFile)
-            " "
-            H.span ! A.class_ "args" $
-              mconcat . fmap H.toHtml . intersperse " " $
-              (logData ^. scriptArgs)
-       H.div ! A.class_ "arscript-rundata" $
-         do H.div ! A.class_ "arscript-runtimes" $
-              do H.span ! A.class_ "startTime" $
-                   H.toHtml $ (logData ^. scriptStartTime)
-                 " - "
-                 H.span ! A.class_ "endTime" $
-                   H.toHtml $ (logData ^. scriptEndTime)
-            H.div ! A.class_ "arscript-pipes" $
-              do H.div ! A.class_ "stdout" $
-                   do H.span $ "stdout" <> H.br <> "---------"
-                      H.pre $ H.toHtml $ (logData ^. stdOut)
-                 H.div ! A.class_ "stderr" $
-                   do H.span $ "stderr" <> H.br <> "---------"
-                      H.pre $ H.toHtml $ (logData ^. stdErr)
-
-newRacerHndl :: Racer -> ARRunApp Response
-newRacerHndl r = lift $ newRacer r >>= ok . toResponse 
-
-showScriptLogs :: ARRunApp Response
-showScriptLogs = lift getScriptLogs >>= ok . toResponse . H.toHtml
-
-removeRacerHndl :: RacerId -> ARRunApp Response
-removeRacerHndl rid = lift $ deleteRacer rid >>= ok . toResponse
-
-buildRacerHndl :: RacerId -> CodeRevision -> ARRunApp Response
-buildRacerHndl rid rev = lift $ buildRacer rid rev >>= ok . toResponse 
-
 route :: Route -> ARRunApp Response
-route r = do
+route r =
   case r of
-    (NewRacer r) -> newRacerHndl r
-    (DelRacer rid) -> removeRacerHndl rid
-    (BuildRacer rid rev) -> buildRacerHndl rid rev
-    ScriptLogs -> showScriptLogs
-  `catch`
-    (\(ScriptError log) -> ok . toResponse $ log)
+    RcrRoute d -> racerRoutes d
+    AdmRoute d -> admRoutes d
 
+admRoutes :: AdminRoute -> ARRunApp Response
+admRoutes = undefined
+
+racerRoutes :: RacerRoute -> ARRunApp Response
+racerRoutes route = do
+  acid <- get
+  r <- query' acid (GetRacerById $ route ^. racerRouteId)
+  maybe (noUserPage $ route ^. racerRouteId) (runRoute) r
+  where
+    runRoute racer =
+      case route ^. actionRoute of
+        Nothing -> userHomePage racer route
+        (Just act) -> runRacerAction act
+
+runRacerAction :: ActionRoute -> ARRunApp Response
+runRacerAction = undefined
+
+noUserPage :: RacerId -> ARRunApp Response
+noUserPage = return . toResponse . toHtml . NoUserPage
+
+userHomePage :: Racer -> RacerRoute -> ARRunApp Response
+userHomePage racer rte = do
+  form <- uploadCodeForm (toPathInfo $ rte & actionRoute .~ (Just UploadCode)) uploadCode
+  return . toResponse . toHtml $ (RacerHomePage racer form)
+
+uploadCode :: UploadCodeFormData -> ARRunApp Response
+uploadCode = undefined
 
 initRepo :: RepoDBState
 initRepo =
@@ -135,5 +84,6 @@ runRoutes initState =
   \showFun url -> flip evalStateT initState $ runRouteT route showFun url
 
 main = do
+  putStrLn . show . toPathInfo $ RcrRoute (RacerRoute (RacerId 2) Nothing)
   withAcid (Just "/tmp/_state") initRepo $
     (simpleHTTP nullConf . implSite "" "" . runRoutes)

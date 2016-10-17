@@ -63,19 +63,23 @@ executable arrun
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , ariaRacer
                      , acid-state
-                     , happstack-server
-                     , safecopy
-                     , mtl
-                     , blaze-markup
-                     , exceptions
-                     , cereal
-                     , lens
-                     , text
+                     , ariaRacer
+                     , blaze-bootstrap
                      , blaze-html
-                     , transformers
+                     , blaze-markup
+                     , cereal
+                     , exceptions
+                     , happstack-server
+                     , lens
+                     , mtl
+                     , reform
+                     , reform-blaze
+                     , reform-happstack
+                     , safecopy
+                     , text
                      , time
+                     , transformers
                      , web-routes
                      , web-routes-happstack
 
