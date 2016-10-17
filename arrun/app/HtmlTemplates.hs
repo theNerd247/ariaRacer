@@ -88,11 +88,13 @@ instance H.ToMarkup Pages where
       genRacerInfoHtml racer =
         BH.row $
         do BH.col "xs-4" $
-             do BH.glyphicon "remove-circle"
-                H.string . show $ (racer ^. racerId . unRacerId)
+             H.a ! A.href (H.toValue . delRacerRt $ racer) $ 
+               do BH.glyphicon "remove-circle"
+                  H.string . (" "++) . show $ (racer ^. racerId . unRacerId)
            BH.col "xs-4" $ H.text (racer ^. racerName)
            BH.col "xs-4" $
              H.string $ "Builds: " ++ (show . DL.length $ racer ^. racerBuilds)
+      delRacerRt r = toPathInfo . AdmRoute . Just $ DelRacer (r ^. racerId)
 
   toMarkup (NoUserPage rid) = 
     appTemplate "404 No Such User" $
@@ -107,7 +109,7 @@ appTemplate title page =
        do bootStrapMeta
           H.title $ H.text title
           importCSS [bootstrapCSS, customCSS]
-     H.body $ mconcat [page, importJS [jqueryJS, bootstrapJS, customJS]]
+     H.body $ mconcat [BH.container page, importJS [jqueryJS, bootstrapJS, customJS]]
 
 bootstrapCSS :: H.AttributeValue
 bootstrapCSS = "/css/bootstrap.min.css"

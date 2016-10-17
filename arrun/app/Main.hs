@@ -49,6 +49,9 @@ adminRoute :: AdminRoute -> ARRunApp Response
 adminRoute ScriptLogs = do
   log <- lift getScriptLogs
   return . toResponse . toHtml $ log
+adminRoute (DelRacer rid) = do
+  lift $ deleteRacer rid
+  seeOtherURL (AdmRoute Nothing)
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
