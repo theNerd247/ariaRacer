@@ -48,7 +48,8 @@ instance PathInfo Route where
   toPathSegments (AdmRoute r) = ("admin" : toPathSegments r)
   toPathSegments (RcrRoute r) = toPathSegments r
   fromPathSegments =
-    AdmRoute <$ segment "admin" <*> fromPathSegments <|> RcrRoute <$> fromPathSegments
+    AdmRoute <$ segment "admin" <*> fromPathSegments 
+    <|> RcrRoute <$> fromPathSegments
 
 instance PathInfo AdminRoute
 

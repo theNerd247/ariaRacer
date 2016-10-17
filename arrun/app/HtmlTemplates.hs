@@ -110,10 +110,10 @@ appTemplate title page =
      H.body $ mconcat [page, importJS [jqueryJS, bootstrapJS, customJS]]
 
 bootstrapCSS :: H.AttributeValue
-bootstrapCSS = "css/bootstrap.min.css"
+bootstrapCSS = "/css/bootstrap.min.css"
 
 bootstrapJS :: H.AttributeValue
-bootstrapJS = "js/bootstrap.min.js"
+bootstrapJS = "/js/bootstrap.min.js"
 
 bootStrapMeta :: H.Html
 bootStrapMeta =
@@ -125,13 +125,13 @@ bootStrapMeta =
   ]
 
 jqueryJS :: H.AttributeValue
-jqueryJS = "js/jquery-3.1.0.min.js"
+jqueryJS = "/js/jquery-3.1.0.min.js"
 
 customCSS :: H.AttributeValue
-customCSS = "css/custom.css"
+customCSS = "/css/custom.css"
 
 customJS :: H.AttributeValue
-customJS = "js/custom.js"
+customJS = "/js/custom.js"
 
 importCSS = mconcat . fmap BH.stylesheet
 

@@ -45,12 +45,11 @@ admRoutes Nothing = do
   return . toResponse . toHtml $ AdminHomePage rs form
 admRoutes (Just r) = adminRoute r
 
-
 adminRoute :: AdminRoute -> ARRunApp Response
-adminRoute ScriptLogs = do 
+adminRoute ScriptLogs = do
   log <- lift getScriptLogs
   return . toResponse . toHtml $ log
- 
+
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
   lift $
@@ -114,4 +113,9 @@ main = do
     \acidState -> do
       simpleHTTP nullConf $
         do decodeBody (defaultBodyPolicy "/tmp" 10000000 10000000 10000000)
-           implSite "" "" $ runRoutes acidState
+           mconcat $
+             [ (implSite "" "" $ runRoutes acidState)
+             , (mconcat $
+                [(dir d $ serveDirectory DisableBrowsing [] d)
+                | d <- ["css", "js", "fonts"] ])
+             ]
