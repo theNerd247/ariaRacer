@@ -37,8 +37,31 @@ route r =
     RcrRoute d -> racerRoutes d
     AdmRoute d -> admRoutes d
 
-admRoutes :: AdminRoute -> ARRunApp Response
-admRoutes = undefined
+admRoutes :: Maybe AdminRoute -> ARRunApp Response
+admRoutes Nothing = do
+  acid <- get
+  rs <- query' acid GetRacers
+  form <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
+  return . toResponse . toHtml $ AdminHomePage rs form
+admRoutes (Just r) = adminRoute r
+
+
+adminRoute :: AdminRoute -> ARRunApp Response
+adminRoute ScriptLogs = do 
+  log <- lift getScriptLogs
+  return . toResponse . toHtml $ log
+ 
+newRacerHandle :: NewRacerFormData -> ARRunApp Response
+newRacerHandle rName = do
+  lift $
+    newRacer $
+    Racer
+    { _racerName = rName
+    , _racerId = RacerId 1
+    , _racerBuilds = []
+    , _selectedBuild = 0
+    }
+  seeOtherURL (AdmRoute Nothing)
 
 racerRoutes :: RacerRoute -> ARRunApp Response
 racerRoutes route = do
@@ -59,7 +82,10 @@ noUserPage = return . toResponse . toHtml . NoUserPage
 
 userHomePage :: Racer -> RacerRoute -> ARRunApp Response
 userHomePage racer rte = do
-  form <- uploadCodeForm (toPathInfo $ rte & actionRoute .~ (Just UploadCode)) uploadCode
+  form <-
+    uploadCodeForm
+      (toPathInfo . RcrRoute $ rte & actionRoute .~ (Just UploadCode))
+      uploadCode
   return . toResponse . toHtml $ (RacerHomePage racer form)
 
 uploadCode :: UploadCodeFormData -> ARRunApp Response
@@ -84,6 +110,8 @@ runRoutes initState =
   \showFun url -> flip evalStateT initState $ runRouteT route showFun url
 
 main = do
-  putStrLn . show . toPathInfo $ RcrRoute (RacerRoute (RacerId 2) Nothing)
   withAcid (Just "/tmp/_state") initRepo $
-    (simpleHTTP nullConf . implSite "" "" . runRoutes)
+    \acidState -> do
+      simpleHTTP nullConf $
+        do decodeBody (defaultBodyPolicy "/tmp" 10000000 10000000 10000000)
+           implSite "" "" $ runRoutes acidState

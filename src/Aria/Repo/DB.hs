@@ -68,6 +68,9 @@ getRacerById = getRacerBy
 getRacerByName :: Text -> Query RepoDBState (Maybe Racer)
 getRacerByName = getRacerBy
 
+getRacers :: Query RepoDBState [Racer]
+getRacers = IxSet.toList . _racerDB <$> ask
+
 getRacerBy
   :: (Typeable k)
   => k -> Query RepoDBState (Maybe Racer)
@@ -84,6 +87,9 @@ addScriptLog log = do
 getScriptConfig :: Query RepoDBState AS.ScriptConfig
 getScriptConfig = _scriptConfig <$> ask
 
+getNextRacerId :: Query RepoDBState RacerId
+getNextRacerId = _nextRacerId <$> ask
+
 $(makeAcidic
     ''RepoDBState
     [ 'upsertRacer
@@ -94,4 +100,6 @@ $(makeAcidic
     , 'getScriptLog
     , 'addScriptLog
     , 'getScriptConfig
+    , 'getRacers
+    , 'getNextRacerId
     ])

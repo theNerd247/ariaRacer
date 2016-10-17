@@ -38,10 +38,14 @@ uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUp
 
 genNewRacerForm :: PasteForm m NewRacerFormData
 genNewRacerForm =
-  fieldset $ inputText "" `setAttr` A.placeholder "New Racer Name"
+  fieldset $
+  inputText "" `setAttr` A.placeholder "New Racer Name" <*
+  inputSubmit "Create New User"
 
 genUploadCodeForm :: PasteForm m UploadCodeFormData
 genUploadCodeForm =
   fieldset $
-  UploadCodeFormData <$> (inputText "" `setAttr` A.placeholder "Build Name") <*>
-  (view _1 <$> inputFile)
+  UploadCodeFormData 
+    <$> (inputText "" `setAttr` A.placeholder "Build Name") 
+    <*> (view _1 <$> inputFile)
+    <* inputSubmit "Upload Code"

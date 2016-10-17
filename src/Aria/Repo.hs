@@ -26,7 +26,6 @@ module Aria.Repo
 
 import Aria.Repo.DB
 import Aria.Types
-import Control.Exception
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Reader
@@ -49,13 +48,22 @@ data ScriptError =
 instance Exception ScriptError
 
 newRacer
-  :: (MonadIO m, MonadThrow m)
+  :: (Monad m, MonadCatch m, MonadIO m, MonadThrow m)
   => Racer -> RepoApp m RacerId
-newRacer racer = do
+newRacer racer =
+  handleAll (\_ -> undoNewUser >> (return $ RacerId 0)) $
+  do acid <- get
+     rid <- update' acid (InsertRacer racer)
+     runScript (AS.CreateRacer rid)
+     return rid
+
+undoNewUser
+  :: (Monad m, MonadIO m, MonadThrow m)
+  => RepoApp m ()
+undoNewUser = do
   acid <- get
-  rid <- update' acid (InsertRacer racer)
-  runScript (AS.CreateRacer rid)
-  return rid
+  (RacerId rid) <- query' acid (GetNextRacerId)
+  update' acid (RemoveRacer . RacerId $ rid - 1)
 
 deleteRacer
   :: (MonadIO m, MonadThrow m)

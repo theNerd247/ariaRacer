@@ -16,18 +16,16 @@ import Thread.Pool
 app :: Int -> IO ()
 app n = do
   threadDelay 500
-  putStrLn $ "Foo: " ++ (show n)
+  putStrLn $! "Foo: " ++ (show n)
   threadDelay 500
 
 main :: IO ()
 main = do
   putStrLn "Starting pool"
-  p <- startPool 3
+  p <- startPool 3 :: IO (ThreadPool ())
   let runApp n = addJob p (app n)
   {-let js = jobs p-}
-  forM_ [1..3] runApp
+  forM_ [1..1000] runApp
+  putStrLn "Threads started"
+  getResult p
   forever $ return ()
-  {-forever $ do -}
-    {-j <- atomically $ readTChan js-}
-    {-return ()-}
-    {-putStrLn . show $ j-}
