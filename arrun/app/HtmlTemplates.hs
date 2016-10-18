@@ -82,17 +82,17 @@ instance H.ToMarkup Pages where
 
   toMarkup (AdminHomePage racers newRacerForm) =
     appTemplate "Admin" $
-    do BH.row . BH.col "xs-12 " $ newRacerForm
+    do BH.row . BH.col "xs-12 " $ newRacerForm ! A.class_ "form-inline"
        mconcat $ genRacerInfoHtml <$> racers
     where
       genRacerInfoHtml racer =
         BH.row $
         do BH.col "xs-4" $
-             H.a ! A.href (H.toValue . delRacerRt $ racer) $ 
+             H.h3 $ H.a ! A.href (H.toValue . delRacerRt $ racer) $ 
                do BH.glyphicon "remove-circle"
                   H.string . (" "++) . show $ (racer ^. racerId . unRacerId)
-           BH.col "xs-4" $ H.text (racer ^. racerName)
-           BH.col "xs-4" $
+           BH.col "xs-4" $ H.h3 $ H.text (racer ^. racerName)
+           BH.col "xs-4" $ H.h3 $
              H.string $ "Builds: " ++ (show . DL.length $ racer ^. racerBuilds)
       delRacerRt r = toPathInfo . AdmRoute . Just $ DelRacer (r ^. racerId)
 

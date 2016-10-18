@@ -9,6 +9,7 @@ import Control.Applicative
 import Data.Text (Text(..))
 import Happstack.Server
 import Text.Blaze.Html5 (Html)
+import Text.Blaze.Bootstrap
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html
 import Text.Reform hiding (view)
@@ -38,9 +39,8 @@ uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUp
 
 genNewRacerForm :: PasteForm m NewRacerFormData
 genNewRacerForm =
-  fieldset $
-  inputText "" `setAttr` A.placeholder "New Racer Name" <*
-  inputSubmit "Create New User"
+  buttonSubmit "Submit" (glyphicon "plus" <> glyphicon "user")`setAttr` (A.type_ "submit" <> A.class_ "btn btn-success") 
+  *> inputText "" `setAttr` (A.placeholder "New Racer Name" <> A.class_ "form-control")
 
 genUploadCodeForm :: PasteForm m UploadCodeFormData
 genUploadCodeForm =

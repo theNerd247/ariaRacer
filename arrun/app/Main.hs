@@ -28,6 +28,7 @@ import Text.Blaze.Html (toHtml)
 import HtmlTemplates
 import Forms
 import qualified Aria.Scripts as AS
+import qualified Data.List as DL
 
 type ARRunApp = RouteT Route (RepoApp (ServerPartT IO))
 
@@ -41,8 +42,9 @@ admRoutes :: Maybe AdminRoute -> ARRunApp Response
 admRoutes Nothing = do
   acid <- get
   rs <- query' acid GetRacers
+  let racers = DL.sortBy (\r1 r2 -> (r1 ^. racerId) `compare` (r2 ^. racerId)) rs
   form <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
-  return . toResponse . toHtml $ AdminHomePage rs form
+  return . toResponse . toHtml $ AdminHomePage racers form
 admRoutes (Just r) = adminRoute r
 
 adminRoute :: AdminRoute -> ARRunApp Response
