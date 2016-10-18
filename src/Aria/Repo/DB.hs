@@ -40,10 +40,6 @@ instance IxSet.Indexable Racer where
 emptyRacerDB :: RepoDB
 emptyRacerDB = IxSet.empty
 
--- | Inserts a new racer if DNE. Otherwise the existing racer is updated
-upsertRacer :: Racer -> Update RepoDBState RacerId
-upsertRacer r = liftQuery (getRacerById (r ^. racerId)) >>= maybe (insertRacer r) updateRacer 
-
 insertRacer :: Racer -> Update RepoDBState RacerId
 insertRacer r = do
   repo <- get
@@ -92,9 +88,9 @@ getNextRacerId = _nextRacerId <$> ask
 
 $(makeAcidic
     ''RepoDBState
-    [ 'upsertRacer
-    , 'insertRacer
+    [ 'insertRacer
     , 'getRacerById
+    , 'updateRacer
     , 'getRacerByName
     , 'removeRacer
     , 'getScriptLog

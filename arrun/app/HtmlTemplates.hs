@@ -68,16 +68,16 @@ instance H.ToMarkup AS.ScriptLogData where
 instance H.ToMarkup Pages where
   toMarkup (RacerHomePage racer uploadForm) =
     appTemplate (racer ^. racerName) $
-    do BH.row . BH.col "xs-12" $ uploadForm
+    do BH.row . BH.col "xs-12" $ uploadForm ! A.class_ "form-inline"
        mconcat $ ((genSelBuildHtml $ racer ^. racerId)) <$> (racer ^. racerBuilds) 
     where
       genSelBuildHtml :: RacerId -> RacerBuild -> H.Html
       genSelBuildHtml rid build =
         BH.row $
-        do BH.col "xs-4" $
+        do BH.col "xs-3" $
              H.a ! A.href (H.toValue $ toPathInfo $ SelectBuild rid $ build ^. buildRev) $
              H.text (build ^. buildName)
-           BH.col "xs-4" $ H.string $ build ^. buildRev
+           BH.col "xs-5" $ H.string $ build ^. buildRev
            BH.col "xs-4" $ H.toHtml $ build ^. buildDate
 
   toMarkup (AdminHomePage racers newRacerForm) =

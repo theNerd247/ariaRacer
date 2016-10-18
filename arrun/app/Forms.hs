@@ -29,9 +29,9 @@ instance FormError () where
 type NewRacerFormData = Strict.Text
 
 data UploadCodeFormData = UploadCodeFormData
-  { buildName :: Strict.Text
-  , buildFile :: FilePath
-  }
+  { ubuildName :: Strict.Text
+  , ubuildFile :: FilePath
+  } deriving (Show)
 
 newRacerForm act handle = reform (form act) "new-racer" handle Nothing genNewRacerForm
 
@@ -44,8 +44,8 @@ genNewRacerForm =
 
 genUploadCodeForm :: PasteForm m UploadCodeFormData
 genUploadCodeForm =
-  fieldset $
-  UploadCodeFormData 
-    <$> (inputText "" `setAttr` A.placeholder "Build Name") 
-    <*> (view _1 <$> inputFile)
-    <* inputSubmit "Upload Code"
+  fieldset $ 
+    buttonSubmit "Submit" (glyphicon "plus" <> glyphicon "duplicate") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success") 
+    *> pure UploadCodeFormData 
+    <*> (inputText "" `setAttr` (A.placeholder "Build Name" <> A.class_ "form-control"))
+    <*> (view _1 <$> inputFile) `setAttr` (A.class_ "form-control")

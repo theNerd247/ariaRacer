@@ -8,6 +8,7 @@ module Aria.Repo
   , deleteRacer
   , buildRacer
   , getScriptLogs
+  , uploadCode
   , AS.scriptBasePath
   , AS.scriptStartTime
   , AS.scriptEndTime
@@ -26,13 +27,16 @@ module Aria.Repo
 
 import Aria.Repo.DB
 import Aria.Types
+import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Time (getCurrentTime)
 import Data.Acid
 import Data.Acid.Advanced
 import Data.Data
+import Data.Text (Text)
 import Data.Monoid ((<>))
 import System.FilePath ((</>))
 import qualified Aria.Scripts as AS
@@ -72,6 +76,7 @@ deleteRacer rid = do
   acid <- get
   update' acid (RemoveRacer rid)
   runScript (AS.RemoveRacer rid)
+  return ()
 
 buildRacer
   :: (MonadIO m, MonadThrow m)
@@ -79,21 +84,38 @@ buildRacer
 buildRacer rid rev = do
   acid <- get
   runScript (AS.BuildRacer rid rev)
+  return ()
 
-getScriptLogs
-  :: (MonadIO m, Monad m)
-  => RepoApp m AS.ScriptLog
+uploadCode
+  :: (MonadIO m, MonadThrow m)
+  => RacerId -> FilePath -> Text -> RepoApp m ()
+uploadCode rid file bName = do
+  acid <- get
+  bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
+  let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
+  runScript (AS.UploadCode rid file bName outFile)
+  bRev <- liftIO $ readFile outFile
+  dt <- liftIO $ getCurrentTime
+  racer <- query' acid $ GetRacerById rid
+  let newBuild = RacerBuild {_buildName = bName, _buildRev = bRev, _buildDate = dt}
+  case racer of
+    Nothing -> return ()
+    Just r -> do
+      update' acid . UpdateRacer $ (r & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
+      return ()
+
+getScriptLogs :: (MonadIO m, Monad m) => RepoApp m AS.ScriptLog
 getScriptLogs = get >>= \acid -> query' acid GetScriptLog
 
 -- | Run the given script command. Upon an ExitFailure throw a ScriptError exception
 runScript
   :: (MonadIO m, MonadThrow m)
-  => AS.ScriptCommand -> RepoApp m ()
+  => AS.ScriptCommand -> RepoApp m String
 runScript cmd = do
   acid <- get
   config <- query' acid GetScriptConfig
-  (out, log) <- AS.runScriptCommand config cmd
+  ((out,ecode), log) <- AS.runScriptCommand config cmd
   update' acid (AddScriptLog log)
-  case out of
-    0 -> return ()
+  case ecode of
+    0 -> return out
     c -> throwM $ ScriptError log

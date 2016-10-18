@@ -18,6 +18,7 @@ import System.Exit (ExitCode(..))
 import System.Process
 import System.FilePath ((</>))
 import Data.Time (UTCTime(..), getCurrentTime)
+import Data.Text (Text,unpack)
 import qualified Data.ByteString.Lazy as BSL
 
 data ScriptConfig = ScriptConfig
@@ -30,6 +31,7 @@ data ScriptCommand
                SHA
   | CreateRacer RacerId
   | RemoveRacer RacerId
+  | UploadCode  RacerId FilePath Text FilePath
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
 -- | Log pretty much everything that a script does
@@ -70,9 +72,10 @@ instance Script ScriptCommand where
   script (BuildRacer (RacerId i) rev) = ("build_racer.sh", [show i, rev])
   script (CreateRacer (RacerId i)) = ("create_racer.sh", [show i])
   script (RemoveRacer (RacerId i)) = ("remove_racer.sh", [show i])
+  script (UploadCode (RacerId i) file nm ou) = ("upload_code.sh", [show i,file,unpack nm,ou])
 
 -- | Run the command and log the result
-runScript :: ScriptCommand -> ScriptApp m ReturnCode
+runScript :: ScriptCommand -> ScriptApp m (String,ReturnCode)
 runScript cmd = do
   let (cPath, args) = script cmd
   -- get the script base path and working directory from config
@@ -105,7 +108,7 @@ runScript cmd = do
       , _scriptCmd = cmd
       }
     ]
-  return rCode
+  return (stdout,rCode)
 
 toReturnCode :: ExitCode -> ReturnCode
 toReturnCode ExitSuccess = 0
@@ -113,5 +116,5 @@ toReturnCode (ExitFailure i) = i
 
 runScriptCommand
   :: (MonadIO m)
-  => ScriptConfig -> ScriptCommand -> m (ReturnCode, ScriptLog)
+  => ScriptConfig -> ScriptCommand -> m ((String,ReturnCode), ScriptLog)
 runScriptCommand config = flip runReaderT config . runWriterT . runScript

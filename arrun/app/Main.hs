@@ -87,13 +87,13 @@ noUserPage = return . toResponse . toHtml . NoUserPage
 userHomePage :: Racer -> RacerRoute -> ARRunApp Response
 userHomePage racer rte = do
   form <-
-    uploadCodeForm
-      (toPathInfo . RcrRoute $ rte & actionRoute .~ (Just UploadCode))
-      uploadCode
+    uploadCodeForm (toPathInfo . RcrRoute $ rte) (uploadCodeHandle (racer ^. racerId))
   return . toResponse . toHtml $ (RacerHomePage racer form)
 
-uploadCode :: UploadCodeFormData -> ARRunApp Response
-uploadCode = undefined
+uploadCodeHandle :: RacerId -> UploadCodeFormData -> ARRunApp Response
+uploadCodeHandle r d = do
+  lift $ uploadCode r (ubuildFile d) (ubuildName d)
+  seeOtherURL . RcrRoute $ RacerRoute r Nothing
 
 initRepo :: RepoDBState
 initRepo =
