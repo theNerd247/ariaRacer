@@ -40,10 +40,7 @@ instance H.ToMarkup AS.ScriptLogData where
   toMarkup logData =
     H.div ! A.class_ "arscript-log-data" $
     do H.div ! A.class_ "arscript-command" $
-         do H.span ! A.class_ "cmd" $ H.toHtml . show $
-              (logData ^. AS.scriptCmd)
-            " "
-            H.span ! A.class_ "exitcode" $ H.toHtml . show $
+         do H.span ! A.class_ "exitcode" $ H.toHtml . show $
               (logData ^. AS.exitCode)
             " "
             H.span ! A.class_ "file" $ H.toHtml . show $

@@ -18,7 +18,6 @@ module Aria.Repo
   , AS.stdErr
   , AS.stdOut
   , AS.exitCode
-  , AS.scriptCmd
   , RepoAppState(..)
   , RepoApp(..)
   , ScriptError(..)
@@ -57,12 +56,13 @@ instance Exception ScriptError
 newRacer
   :: (Monad m, MonadCatch m, MonadIO m, MonadThrow m)
   => Racer -> RepoApp m RacerId
-newRacer racer =
-  handleAll (\_ -> undoNewUser >> (return $ RacerId 0)) $
-  do acid <- get
-     rid <- update' acid (InsertRacer racer)
-     runScript (AS.CreateRacer rid)
-     return rid
+newRacer racer = do 
+  acid <- get
+  rid <- update' acid (InsertRacer racer)
+  runScript (AS.CreateRacer rid)
+  return rid
+  `catchAll`
+    (\_ -> undoNewUser >> (return $ RacerId 0))
 
 undoNewUser
   :: (Monad m, MonadIO m, MonadThrow m)
@@ -118,7 +118,9 @@ getScriptLogs
   => RepoApp m AS.ScriptLog
 getScriptLogs = get >>= \acid -> query' acid GetScriptLog
 
-selectBuild :: (MonadIO m, Monad m) => RacerId -> SHA -> RepoApp m ()
+selectBuild
+  :: (MonadIO m, Monad m)
+  => RacerId -> SHA -> RepoApp m ()
 selectBuild rid sha = do
   acid <- get
   mr <- query' acid (GetRacerById rid)
@@ -135,13 +137,13 @@ selectBuild rid sha = do
 
 -- | Run the given script command. Upon an ExitFailure throw a ScriptError exception
 runScript
-  :: (MonadIO m, MonadThrow m)
-  => AS.ScriptCommand -> RepoApp m String
+  :: (MonadIO m, MonadThrow m, AS.Script a)
+  => a -> RepoApp m [String]
 runScript cmd = do
   acid <- get
   config <- query' acid GetScriptConfig
-  ((out, ecode), log) <- AS.runScriptCommand config cmd
+  log <- AS.runScriptCommand config cmd
   update' acid (AddScriptLog log)
-  case ecode of
-    0 -> return out
-    c -> throwM $ ScriptError log
+  case (allOf each ((== 0) . (view AS.exitCode)) log) of
+    True -> return $ AS._stdOut <$> log
+    _ -> throwM $ ScriptError log
