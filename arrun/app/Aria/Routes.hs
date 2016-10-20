@@ -31,11 +31,7 @@ data RacerRoute = RacerRoute
   } deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data ActionRoute
-  = UploadCode
-  | SelectBuild RacerId
-                SHA
-  | BuildRacer RacerId
-               SHA
+  = SelectBuild SHA
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 instance PathInfo RacerId

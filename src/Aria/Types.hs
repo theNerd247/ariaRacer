@@ -9,7 +9,7 @@ import Data.Data
 import Data.Time (UTCTime(..))
 import Data.SafeCopy
 import Control.Lens
-import GHC.Generics
+import GHC.Generics hiding (to)
 
 type Repository = FilePath
 
@@ -58,3 +58,6 @@ racer1 = lens (\s -> s ^. unRaceData . _1) (\s r -> s & unRaceData . _1 .~ r)
 
 racer2 :: Lens' RaceData RacerId
 racer2 = lens (\s -> s ^. unRaceData . _2) (\s r -> s & unRaceData . _2 .~ r)
+
+currentBuildSHA :: Getter Racer (Maybe SHA)
+currentBuildSHA = to $ \r -> r ^? racerBuilds . ix (r ^. selectedBuild . to fromInteger) . buildRev

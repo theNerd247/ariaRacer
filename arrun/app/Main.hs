@@ -76,10 +76,12 @@ racerRoutes route = do
     runRoute racer =
       case route ^. actionRoute of
         Nothing -> userHomePage racer route
-        (Just act) -> runRacerAction act
+        (Just act) -> runRacerAction racer act
 
-runRacerAction :: ActionRoute -> ARRunApp Response
-runRacerAction = undefined
+runRacerAction :: Racer -> ActionRoute -> ARRunApp Response
+runRacerAction r (SelectBuild sha) = do
+  lift $ selectBuild (r ^. racerId) sha
+  seeOtherURL . RcrRoute $ RacerRoute (r ^. racerId) Nothing
 
 noUserPage :: RacerId -> ARRunApp Response
 noUserPage = return . toResponse . toHtml . NoUserPage
