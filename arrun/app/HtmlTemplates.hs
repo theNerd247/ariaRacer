@@ -28,6 +28,7 @@ data Pages
   | AdminHomePage [Racer]
                   H.Html
   | NoUserPage RacerId
+  | ScriptErrorPage AS.ScriptLog
 
 instance H.ToMarkup AS.ScriptLog where
   toMarkup = H.toHtml . fmap H.toHtml
@@ -105,6 +106,12 @@ instance H.ToMarkup Pages where
       (H.string $ "Uh Oh! Error 404")
       (H.string $ "Racer with id: " ++ (show $ rid ^. unRacerId) ++
        " doesn't exist!")
+
+  toMarkup (ScriptErrorPage log) = appTemplate "Script Error" $ 
+    BH.jumbotron (H.string "Uh oh! A script error occured") $ 
+      do H.h3 . H.string $ "Let the prof know an error has occured."
+         H.h3 . H.string $ "The script log is: "
+         H.toHtml $ log
 
 appTemplate :: Text -> H.Html -> H.Html
 appTemplate title page =
