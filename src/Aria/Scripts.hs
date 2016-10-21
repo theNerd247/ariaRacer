@@ -123,6 +123,5 @@ runScriptCommand
   => ScriptConfig -> a -> m ScriptLog
 runScriptCommand config = flip runReaderT config . execWriterT . runScript
 
-{-runScriptCommands :: (MonadIO m, Functor f, Script a) => ScriptConfig -> f a -> m ScriptLog-}
-{-runScriptCommands config cmds = flip runReaderT config . execWriterT $ -}
-  {-do runScript <$> cmds-}
+runScriptCommands :: (MonadIO m, Traversable t, Script a) => ScriptConfig -> t a -> m ScriptLog
+runScriptCommands config cmds = flip runReaderT config . execWriterT $ forM cmds runScript
