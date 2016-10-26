@@ -29,6 +29,7 @@ data Pages
                   H.Html
   | NoUserPage RacerId
   | ScriptErrorPage AS.ScriptLog
+  | BuildErrorPage RacerId AS.ScriptLog
 
 instance H.ToMarkup AS.ScriptLog where
   toMarkup = H.toHtml . fmap H.toHtml
@@ -109,6 +110,13 @@ instance H.ToMarkup Pages where
       do H.h3 . H.string $ "Let the prof know an error has occured."
          H.h3 . H.string $ "The script log is: "
          H.toHtml $ log
+
+  toMarkup (BuildErrorPage rid log) = appTemplate "Build Error" $ 
+    do BH.jumbotron 
+         (H.string "Error Occured While Building Your Code")
+         (do BH.row . BH.col "xs-12" . H.h3 . H.string $ "Please fix  the following errors: " 
+             BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^? ix 1 . AS.stdOut)
+       
 
 appTemplate :: Text -> H.Html -> H.Html
 appTemplate title page =

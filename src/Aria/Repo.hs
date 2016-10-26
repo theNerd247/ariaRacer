@@ -6,7 +6,6 @@
 module Aria.Repo
   ( newRacer
   , deleteRacer
-  , buildRacer
   , getScriptLogs
   , uploadCode
   , selectBuild
@@ -23,6 +22,7 @@ module Aria.Repo
   , ScriptError(..)
   , RepoDB
   , RepoDBState(..)
+  , RacerNotFound(..)
   ) where
 
 import Aria.Repo.DB
@@ -51,7 +51,12 @@ data ScriptError =
   ScriptError AS.ScriptLog
   deriving (Read, Show, Ord, Eq, Data, Typeable)
 
+data RacerNotFound = RacerNotFound RacerId
+  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
 instance Exception ScriptError
+
+instance Exception RacerNotFound
 
 newRacer
   :: (Monad m, MonadCatch m, MonadIO m, MonadThrow m)
@@ -81,37 +86,33 @@ deleteRacer rid = do
   runScript (AS.RemoveRacer rid)
   return ()
 
-buildRacer
-  :: (MonadIO m, MonadThrow m)
-  => RacerId -> SHA -> RepoApp m ()
-buildRacer rid rev = do
-  acid <- get
-  runScript (AS.BuildRacer rid rev)
-  return ()
-
 uploadCode
   :: (MonadIO m, MonadThrow m)
   => RacerId -> FilePath -> Text -> RepoApp m ()
-uploadCode rid file bName = do
+uploadCode rid file bName = withRacer rid $ \racer -> do
   acid <- get
   bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
   let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
-  runScript (AS.UploadCode rid file bName outFile)
+  runScripts $ [(AS.UploadCode rid file), (AS.BuildRacer rid ""), (AS.CommitBuild rid file outFile)]
   bRev <- liftIO $ DL.takeWhile (not . isSpace) <$> readFile outFile
   dt <- liftIO $ getCurrentTime
-  racer <- query' acid $ GetRacerById rid
   let newBuild =
         RacerBuild
         { _buildName = bName
         , _buildRev = bRev
         , _buildDate = dt
         }
+  update' acid . UpdateRacer $
+        (racer & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
+  return ()
+
+withRacer :: (Monad m, MonadIO m, MonadThrow m) => RacerId -> (Racer->RepoApp m ()) -> RepoApp m ()
+withRacer rid act = do
+  acid <- get
+  racer <- query' acid $ GetRacerById rid
   case racer of
-    Nothing -> return ()
-    Just r -> do
-      update' acid . UpdateRacer $
-        (r & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
-      return ()
+    Nothing -> throwM $ RacerNotFound rid
+    Just r -> act r
 
 getScriptLogs
   :: (MonadIO m, Monad m)
@@ -135,14 +136,17 @@ selectBuild rid sha = do
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
 
+runScript :: (MonadIO m, MonadThrow m, AS.Script a) => a -> RepoApp m [String]
+runScript = runScripts . Identity
+
 -- | Run the given script command. Upon an ExitFailure throw a ScriptError exception
-runScript
-  :: (MonadIO m, MonadThrow m, AS.Script a)
-  => a -> RepoApp m [String]
-runScript cmd = do
+runScripts
+  :: (MonadIO m, MonadThrow m, AS.Script a, Traversable t)
+  => t a -> RepoApp m [String]
+runScripts cmds = do
   acid <- get
   config <- query' acid GetScriptConfig
-  log <- AS.runScriptCommand config cmd
+  log <- AS.runScriptCommand config cmds
   update' acid (AddScriptLog log)
   case (allOf each ((== 0) . (view AS.exitCode)) log) of
     True -> return $ AS._stdOut <$> log

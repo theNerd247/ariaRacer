@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if (( $# != 2 )); then
-	echo "bad build_user call: $@" 1>&2
+if (( $# > 2 || $# < 1 )); then
+	echo "bad build_racer.sh call: $@" 1>&2
 	exit 1
 fi
 
@@ -17,16 +17,18 @@ echo "starting build for user $user for $sha" 1>&2
 set -x
 set -e
 
-if [[ ! -d $user ]]; then
-	git clone "file://$gitserver/$user" $user
-fi
-
 cd $user
 
-git reset --hard master
-git checkout $sha
+if [[ $2 ]]; then
+  git reset --hard HEAD
+  git checkout $sha
+fi
+
 mkdir -p build
 cd build
 rm -rf ./*
 cmake ..
-make
+
+set +x
+
+make 2>&1 

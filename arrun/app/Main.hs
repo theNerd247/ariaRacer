@@ -94,8 +94,10 @@ userHomePage racer rte = do
 
 uploadCodeHandle :: RacerId -> UploadCodeFormData -> ARRunApp Response
 uploadCodeHandle r d = do
-  lift $ uploadCode r (ubuildFile d) (ubuildName d)
+  lift $ uploadCode r (ubuildTmpFile d) (ubuildName d)
   seeOtherURL . RcrRoute $ RacerRoute r Nothing
+  `catch`
+  \(ScriptError log) -> return . toResponse . toHtml $ BuildErrorPage r log
 
 initRepo :: RepoDBState
 initRepo =

@@ -30,7 +30,7 @@ type NewRacerFormData = Strict.Text
 
 data UploadCodeFormData = UploadCodeFormData
   { ubuildName :: Strict.Text
-  , ubuildFile :: FilePath
+  , ubuildTmpFile :: FilePath
   } deriving (Show)
 
 newRacerForm act handle = reform (form act) "new-racer" handle Nothing genNewRacerForm

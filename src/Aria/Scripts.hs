@@ -33,8 +33,9 @@ data ScriptCommand
   | RemoveRacer RacerId
   | UploadCode RacerId
                FilePath
-               Text
-               FilePath
+  | CommitBuild RacerId
+                FilePath
+                FilePath
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
 -- | Log pretty much everything that a script does
@@ -74,8 +75,10 @@ instance Script ScriptCommand where
   script (BuildRacer (RacerId i) rev) = ("build_racer.sh", [show i, rev])
   script (CreateRacer (RacerId i)) = ("create_racer.sh", [show i])
   script (RemoveRacer (RacerId i)) = ("remove_racer.sh", [show i])
-  script (UploadCode (RacerId i) file nm ou) =
-    ("upload_code.sh", [show i, file, unpack nm, ou])
+  script (UploadCode (RacerId i) file ) =
+    ("upload_code.sh", [show i, file])
+  script (CommitBuild (RacerId i) buildFile commitFile) =
+    ("commit_racer.sh", [show i, buildFile, commitFile])
 
 -- | Run the command and log the result
 runScript
@@ -119,9 +122,7 @@ toReturnCode ExitSuccess = 0
 toReturnCode (ExitFailure i) = i
 
 runScriptCommand
-  :: (MonadIO m, Script a)
-  => ScriptConfig -> a -> m ScriptLog
-runScriptCommand config = flip runReaderT config . execWriterT . runScript
-
-runScriptCommands :: (MonadIO m, Traversable t, Script a) => ScriptConfig -> t a -> m ScriptLog
-runScriptCommands config cmds = flip runReaderT config . execWriterT $ forM cmds runScript
+  :: (MonadIO m, Traversable t, Script a)
+  => ScriptConfig -> t a -> m ScriptLog
+runScriptCommand config cmds =
+  flip runReaderT config . execWriterT $ forM cmds runScript
