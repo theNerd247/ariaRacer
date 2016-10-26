@@ -19,7 +19,6 @@ module Aria.Repo
   , AS.exitCode
   , RepoAppState(..)
   , RepoApp(..)
-  , ScriptError(..)
   , RepoDB
   , RepoDBState(..)
   , RacerNotFound(..)
@@ -47,14 +46,8 @@ type RepoAppState = AcidState RepoDBState
 
 type RepoApp = StateT RepoAppState
 
-data ScriptError =
-  ScriptError AS.ScriptLog
-  deriving (Read, Show, Ord, Eq, Data, Typeable)
-
 data RacerNotFound = RacerNotFound RacerId
   deriving (Eq,Ord,Show,Read,Data,Typeable)
-
-instance Exception ScriptError
 
 instance Exception RacerNotFound
 
@@ -148,6 +141,4 @@ runScripts cmds = do
   config <- query' acid GetScriptConfig
   log <- AS.runScriptCommand config cmds
   update' acid (AddScriptLog log)
-  case (allOf each ((== 0) . (view AS.exitCode)) log) of
-    True -> return $ AS._stdOut <$> log
-    _ -> throwM $ ScriptError log
+  return $ AS._stdOut <$> log

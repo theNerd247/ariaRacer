@@ -30,7 +30,7 @@ data Pages
   | NoUserPage RacerId
   | ScriptErrorPage AS.ScriptLog
   | BuildErrorPage RacerId
-                   AS.ScriptLog
+                   AS.ScriptLogData
   | BuildExistsPage RacerId
 
 instance H.ToMarkup AS.ScriptLog where
@@ -132,9 +132,7 @@ instance H.ToMarkup Pages where
     do BH.jumbotron (H.string "Error Occured While Building Your Code") $
          do BH.row . BH.col "xs-12" . H.h3 . H.string $
               "Please fix  the following errors: "
-            BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^?
-              ix 1 .
-              AS.stdOut
+            BH.row . BH.col "xs-12" . H.pre . H.string $ log ^. AS.stdOut
             BH.row $
               do BH.col "xs-4" mempty
                  BH.col "xs-4" $ racerPageButton rid "Go back"

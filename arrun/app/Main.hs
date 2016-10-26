@@ -57,8 +57,7 @@ adminRoute (DelRacer rid) = do
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
-  lift $
-    newRacer $
+  lift $ newRacer $
     Racer
     { _racerName = rName
     , _racerId = RacerId 1
@@ -89,18 +88,20 @@ noUserPage = return . toResponse . toHtml . NoUserPage
 userHomePage :: Racer -> RacerRoute -> ARRunApp Response
 userHomePage racer rte = do
   form <-
-    uploadCodeForm (toPathInfo . RcrRoute $ rte) (uploadCodeHandle (racer ^. racerId))
+    uploadCodeForm
+      (toPathInfo . RcrRoute $ rte)
+      (uploadCodeHandle (racer ^. racerId))
   return . toResponse . toHtml $ (RacerHomePage racer form)
 
 uploadCodeHandle :: RacerId -> UploadCodeFormData -> ARRunApp Response
-uploadCodeHandle r d = do
-  lift $ uploadCode r (ubuildTmpFile d) (ubuildName d)
-  seeOtherURL . RcrRoute $ RacerRoute r Nothing
+uploadCodeHandle r d =
+  do lift $ uploadCode r (ubuildTmpFile d) (ubuildName d)
+     seeOtherURL . RcrRoute $ RacerRoute r Nothing 
   `catch`
-  \(ScriptError log) -> case log ^? ix 2 . AS.exitCode of
-    (Just 1) -> return . toResponse . toHtml $ BuildExistsPage r
-    _ -> return . toResponse . toHtml $ BuildErrorPage r log
-  
+  \(AS.ScriptError log) ->
+     case ((log ^. AS.scriptFile . to (DL.isSubsequenceOf "commit")  == True) && log ^. AS.exitCode == 1) of
+       True -> return . toResponse . toHtml $ BuildExistsPage r
+       _ -> return . toResponse . toHtml $ BuildErrorPage r log
 
 initRepo :: RepoDBState
 initRepo =
@@ -128,6 +129,6 @@ main = do
            mconcat $
              [ (implSite "" "" $ runRoutes acidState)
              , (mconcat $
-                [(dir d $ serveDirectory DisableBrowsing [] d)
+                [ (dir d $ serveDirectory DisableBrowsing [] d)
                 | d <- ["css", "js", "fonts"] ])
              ]

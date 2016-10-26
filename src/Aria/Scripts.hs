@@ -10,6 +10,7 @@ import Data.Data
 import Data.SafeCopy
 import Data.Serialize (encodeLazy)
 import Control.Lens
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Writer
 import Control.Monad.Reader
@@ -49,6 +50,12 @@ data ScriptLogData = ScriptLogData
   , _exitCode :: ReturnCode
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
+data ScriptError =
+  ScriptError ScriptLogData
+  deriving (Read, Show, Ord, Eq, Data, Typeable)
+
+instance Exception ScriptError
+
 type ReturnCode = Int
 
 type ScriptLog = [ScriptLogData]
@@ -81,7 +88,7 @@ instance Script ScriptCommand where
 
 -- | Run the command and log the result
 runScript
-  :: (Script a)
+  :: (Script a, MonadThrow m)
   => a -> ScriptApp m ()
 runScript cmd = do
   let (cPath, args) = script cmd
@@ -104,24 +111,26 @@ runScript cmd = do
   -- generate the log and return
   let rCode = toReturnCode out
   let log =
-        [ ScriptLogData
-          { _scriptStartTime = sTime
-          , _scriptEndTime = eTime
-          , _stdErr = stderr
-          , _stdOut = stdout
-          , _exitCode = rCode
-          , _scriptFile = cmdPath
-          , _scriptArgs = args
-          }
-        ]
-  tell log
+        ScriptLogData
+        { _scriptStartTime = sTime
+        , _scriptEndTime = eTime
+        , _stdErr = stderr
+        , _stdOut = stdout
+        , _exitCode = rCode
+        , _scriptFile = cmdPath
+        , _scriptArgs = args
+        }
+  tell [log]
+  case rCode == 0 of
+    True -> return ()
+    _ -> throwM $ ScriptError log
 
 toReturnCode :: ExitCode -> ReturnCode
 toReturnCode ExitSuccess = 0
 toReturnCode (ExitFailure i) = i
 
 runScriptCommand
-  :: (MonadIO m, Traversable t, Script a)
+  :: (MonadIO m, MonadThrow m, Traversable t, Script a)
   => ScriptConfig -> t a -> m ScriptLog
 runScriptCommand config cmds =
   flip runReaderT config . execWriterT $ forM cmds runScript
