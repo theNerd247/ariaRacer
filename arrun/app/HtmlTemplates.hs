@@ -29,7 +29,9 @@ data Pages
                   H.Html
   | NoUserPage RacerId
   | ScriptErrorPage AS.ScriptLog
-  | BuildErrorPage RacerId AS.ScriptLog
+  | BuildErrorPage RacerId
+                   AS.ScriptLog
+  | BuildExistsPage RacerId
 
 instance H.ToMarkup AS.ScriptLog where
   toMarkup = H.toHtml . fmap H.toHtml
@@ -68,10 +70,17 @@ instance H.ToMarkup AS.ScriptLogData where
 instance H.ToMarkup Pages where
   toMarkup (RacerHomePage racer uploadForm) =
     appTemplate (racer ^. racerName) $
-    do unless (DL.length (racer ^. racerBuilds) == 0) $  BH.row . BH.col "xs-12" . H.h3 $ do
-         H.string $ "Race Build: " 
-         H.text . fromJust $ racer ^? racerBuilds . ix (racer ^. selectedBuild . to fromInteger) . buildName 
+    do unless (DL.length (racer ^. racerBuilds) == 0) $ BH.row . BH.col "xs-12" .
+         H.h3 $
+         do H.string $ "Currently Racing with Build: "
+            H.text . fromJust $ racer ^? racerBuilds .
+              ix (racer ^. selectedBuild . to fromInteger) .
+              buildName
        BH.row . BH.col "xs-12" $ uploadForm ! A.class_ "form-inline"
+       BH.row $
+         do BH.col "xs-3" . H.h3 $ "Build"
+            BH.col "xs-5" . H.h3 $ "Commit SHA"
+            BH.col "xs-4" . H.h3 $ "Build Date"
        mconcat $ ((genSelBuildHtml $ racer ^. racerId)) <$>
          (racer ^. racerBuilds)
     where
@@ -80,7 +89,9 @@ instance H.ToMarkup Pages where
         BH.row $
         do BH.col "xs-3" $ H.a !
              A.href
-               (H.toValue . toPathInfo . RcrRoute . RacerRoute rid . Just . SelectBuild $ build ^. buildRev) $
+               (H.toValue . toPathInfo . RcrRoute . RacerRoute rid . Just . SelectBuild $
+                build ^.
+                buildRev) $
              H.text (build ^. buildName)
            BH.col "xs-5" $ H.string $ build ^. buildRev
            BH.col "xs-4" $ H.toHtml $ build ^. buildDate
@@ -104,19 +115,28 @@ instance H.ToMarkup Pages where
       (H.string $ "Uh Oh! Error 404")
       (H.string $ "Racer with id: " ++ (show $ rid ^. unRacerId) ++
        " doesn't exist!")
-
-  toMarkup (ScriptErrorPage log) = appTemplate "Script Error" $ 
-    BH.jumbotron (H.string "Uh oh! A script error occured") $ 
-      do H.h3 . H.string $ "Let the prof know an error has occured."
-         H.h3 . H.string $ "The script log is: "
-         H.toHtml $ log
-
-  toMarkup (BuildErrorPage rid log) = appTemplate "Build Error" $ 
-    do BH.jumbotron 
+  toMarkup (ScriptErrorPage log) =
+    appTemplate "Script Error" $
+    BH.jumbotron (H.string "Uh oh! A script error occured") $
+    do H.h3 . H.string $ "Let the prof know an error has occured."
+       H.h3 . H.string $ "The script log is: "
+       H.toHtml $ log
+  toMarkup (BuildErrorPage rid log) =
+    appTemplate "Build Error" $
+    do BH.jumbotron
          (H.string "Error Occured While Building Your Code")
-         (do BH.row . BH.col "xs-12" . H.h3 . H.string $ "Please fix  the following errors: " 
-             BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^? ix 1 . AS.stdOut)
-       
+         (do BH.row . BH.col "xs-12" . H.h3 . H.string $
+               "Please fix  the following errors: "
+             BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^?
+               ix 1 .
+               AS.stdOut)
+  toMarkup (BuildExistsPage rid) =
+    appTemplate "Build Exists" $
+    do BH.jumbotron
+         (H.string "Build Already Exists and Is Already Selected")
+         (H.a ! A.class_ "btn btn-success btn-large" !
+          A.href (H.toValue . toPathInfo . RcrRoute $ RacerRoute rid Nothing) $
+          H.string "Go back")
 
 appTemplate :: Text -> H.Html -> H.Html
 appTemplate title page =

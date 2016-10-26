@@ -97,7 +97,10 @@ uploadCodeHandle r d = do
   lift $ uploadCode r (ubuildTmpFile d) (ubuildName d)
   seeOtherURL . RcrRoute $ RacerRoute r Nothing
   `catch`
-  \(ScriptError log) -> return . toResponse . toHtml $ BuildErrorPage r log
+  \(ScriptError log) -> case log ^? ix 2 . AS.exitCode of
+    (Just 1) -> return . toResponse . toHtml $ BuildExistsPage r
+    _ -> return . toResponse . toHtml $ BuildErrorPage r log
+  
 
 initRepo :: RepoDBState
 initRepo =

@@ -6,7 +6,7 @@ if [[ $# != 3 ]]; then
 fi
 
 user=$1
-file=$2
+buildName=$2
 outFile=$3
 
 set -x -e

@@ -34,7 +34,7 @@ data ScriptCommand
   | UploadCode RacerId
                FilePath
   | CommitBuild RacerId
-                FilePath
+                Text
                 FilePath
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
@@ -75,10 +75,9 @@ instance Script ScriptCommand where
   script (BuildRacer (RacerId i) rev) = ("build_racer.sh", [show i, rev])
   script (CreateRacer (RacerId i)) = ("create_racer.sh", [show i])
   script (RemoveRacer (RacerId i)) = ("remove_racer.sh", [show i])
-  script (UploadCode (RacerId i) file ) =
-    ("upload_code.sh", [show i, file])
-  script (CommitBuild (RacerId i) buildFile commitFile) =
-    ("commit_racer.sh", [show i, buildFile, commitFile])
+  script (UploadCode (RacerId i) file) = ("upload_code.sh", [show i, file])
+  script (CommitBuild (RacerId i) buildName commitFile) =
+    ("commit_racer.sh", [show i, unpack buildName, commitFile])
 
 -- | Run the command and log the result
 runScript

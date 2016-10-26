@@ -93,7 +93,7 @@ uploadCode rid file bName = withRacer rid $ \racer -> do
   acid <- get
   bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
   let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
-  runScripts $ [(AS.UploadCode rid file), (AS.BuildRacer rid ""), (AS.CommitBuild rid file outFile)]
+  runScripts $ [(AS.UploadCode rid file), (AS.BuildRacer rid ""), (AS.CommitBuild rid bName outFile)]
   bRev <- liftIO $ DL.takeWhile (not . isSpace) <$> readFile outFile
   dt <- liftIO $ getCurrentTime
   let newBuild =
