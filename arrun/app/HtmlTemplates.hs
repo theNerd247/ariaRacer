@@ -70,20 +70,26 @@ instance H.ToMarkup AS.ScriptLogData where
 instance H.ToMarkup Pages where
   toMarkup (RacerHomePage racer uploadForm) =
     appTemplate (racer ^. racerName) $
-    do unless (DL.length (racer ^. racerBuilds) == 0) $ BH.row . BH.col "xs-12" .
-         H.h3 $
+    do withBuilds $ BH.row . BH.col "xs-12" . H.h3 $
          do H.string $ "Currently Racing with Build: "
             H.text . fromJust $ racer ^? racerBuilds .
               ix (racer ^. selectedBuild . to fromInteger) .
               buildName
        BH.row . BH.col "xs-12" $ uploadForm ! A.class_ "form-inline"
-       BH.row $
-         do BH.col "xs-3" . H.h3 $ "Build"
-            BH.col "xs-5" . H.h3 $ "Commit SHA"
-            BH.col "xs-4" . H.h3 $ "Build Date"
-       mconcat $ ((genSelBuildHtml $ racer ^. racerId)) <$>
-         (racer ^. racerBuilds)
+       withNoBuilds $
+         do BH.row . BH.col "xs-12" . H.h2 $ "You Have No Builds"
+            BH.row . BH.col "xs-12" . H.h4 $
+              "Upload your source code to get started."
+       withBuilds $
+         do BH.row $
+              do BH.col "xs-3" . H.h3 $ "Build"
+                 BH.col "xs-5" . H.h3 $ "Commit SHA"
+                 BH.col "xs-4" . H.h3 $ "Build Date"
+            mconcat $ ((genSelBuildHtml $ racer ^. racerId)) <$>
+              (racer ^. racerBuilds)
     where
+      withNoBuilds = when (DL.length (racer ^. racerBuilds) == 0)
+      withBuilds = unless (DL.length (racer ^. racerBuilds) == 0)
       genSelBuildHtml :: RacerId -> RacerBuild -> H.Html
       genSelBuildHtml rid build =
         BH.row $
@@ -123,20 +129,27 @@ instance H.ToMarkup Pages where
        H.toHtml $ log
   toMarkup (BuildErrorPage rid log) =
     appTemplate "Build Error" $
-    do BH.jumbotron
-         (H.string "Error Occured While Building Your Code")
-         (do BH.row . BH.col "xs-12" . H.h3 . H.string $
-               "Please fix  the following errors: "
-             BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^?
-               ix 1 .
-               AS.stdOut)
+    do BH.jumbotron (H.string "Error Occured While Building Your Code") $
+         do BH.row . BH.col "xs-12" . H.h3 . H.string $
+              "Please fix  the following errors: "
+            BH.row . BH.col "xs-12" . maybe mempty (H.pre . H.string) $ log ^?
+              ix 1 .
+              AS.stdOut
+            BH.row $
+              do BH.col "xs-4" mempty
+                 BH.col "xs-4" $ racerPageButton rid "Go back"
+                 BH.col "xs-4" mempty
   toMarkup (BuildExistsPage rid) =
     appTemplate "Build Exists" $
     do BH.jumbotron
          (H.string "Build Already Exists and Is Already Selected")
-         (H.a ! A.class_ "btn btn-success btn-large" !
-          A.href (H.toValue . toPathInfo . RcrRoute $ RacerRoute rid Nothing) $
-          H.string "Go back")
+         (racerPageButton rid "Go back")
+
+racerPageButton :: RacerId -> String -> H.Html
+racerPageButton rid msg =
+  H.a ! A.class_ "btn btn-success btn-large" !
+  A.href (H.toValue . toPathInfo . RcrRoute $ RacerRoute rid Nothing) $
+  H.string msg
 
 appTemplate :: Text -> H.Html -> H.Html
 appTemplate title page =
