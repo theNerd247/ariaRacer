@@ -78,9 +78,11 @@ racerRoutes route = do
         (Just act) -> runRacerAction racer act
 
 runRacerAction :: Racer -> ActionRoute -> ARRunApp Response
-runRacerAction r (SelectBuild sha) = do
-  lift $ selectBuild (r ^. racerId) sha
-  seeOtherURL . RcrRoute $ RacerRoute (r ^. racerId) Nothing
+runRacerAction r (SelectBuild sha) = 
+  do lift $ selectBuild (r ^. racerId) sha
+     seeOtherURL . RcrRoute $ RacerRoute (r ^. racerId) Nothing
+  `catch`
+  \(AS.ScriptError log) -> return . toResponse . toHtml $ ScriptErrorPage log
 
 noUserPage :: RacerId -> ARRunApp Response
 noUserPage = return . toResponse . toHtml . NoUserPage

@@ -46,21 +46,22 @@ type RepoAppState = AcidState RepoDBState
 
 type RepoApp = StateT RepoAppState
 
-data RacerNotFound = RacerNotFound RacerId
-  deriving (Eq,Ord,Show,Read,Data,Typeable)
+data RacerNotFound =
+  RacerNotFound RacerId
+  deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 instance Exception RacerNotFound
 
 newRacer
   :: (Monad m, MonadCatch m, MonadIO m, MonadThrow m)
   => Racer -> RepoApp m RacerId
-newRacer racer = do 
-  acid <- get
-  rid <- update' acid (InsertRacer racer)
-  runScript (AS.CreateRacer rid)
-  return rid
+newRacer racer =
+  do acid <- get
+     rid <- update' acid (InsertRacer racer)
+     runScript (AS.CreateRacer rid)
+     return rid 
   `catchAll`
-    (\_ -> undoNewUser >> (return $ RacerId 0))
+  (\_ -> undoNewUser >> (return $ RacerId 0))
 
 undoNewUser
   :: (Monad m, MonadIO m, MonadThrow m)
@@ -82,24 +83,32 @@ deleteRacer rid = do
 uploadCode
   :: (MonadIO m, MonadThrow m)
   => RacerId -> FilePath -> Text -> RepoApp m ()
-uploadCode rid file bName = withRacer rid $ \racer -> do
-  acid <- get
-  bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
-  let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
-  runScripts $ [(AS.UploadCode rid file), (AS.BuildRacer rid ""), (AS.CommitBuild rid bName outFile)]
-  bRev <- liftIO $ DL.takeWhile (not . isSpace) <$> readFile outFile
-  dt <- liftIO $ getCurrentTime
-  let newBuild =
-        RacerBuild
-        { _buildName = bName
-        , _buildRev = bRev
-        , _buildDate = dt
-        }
-  update' acid . UpdateRacer $
-        (racer & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
-  return ()
+uploadCode rid file bName =
+  withRacer rid $
+  \racer -> do
+    acid <- get
+    bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
+    let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
+    runScripts $
+      [ (AS.UploadCode rid file)
+      , (AS.BuildRacer rid "")
+      , (AS.CommitBuild rid bName outFile)
+      ]
+    bRev <- liftIO $ DL.takeWhile (not . isSpace) <$> readFile outFile
+    dt <- liftIO $ getCurrentTime
+    let newBuild =
+          RacerBuild
+          { _buildName = bName
+          , _buildRev = bRev
+          , _buildDate = dt
+          }
+    update' acid . UpdateRacer $
+      (racer & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
+    return ()
 
-withRacer :: (Monad m, MonadIO m, MonadThrow m) => RacerId -> (Racer->RepoApp m ()) -> RepoApp m ()
+withRacer
+  :: (Monad m, MonadIO m, MonadThrow m)
+  => RacerId -> (Racer -> RepoApp m ()) -> RepoApp m ()
 withRacer rid act = do
   acid <- get
   racer <- query' acid $ GetRacerById rid
@@ -113,14 +122,13 @@ getScriptLogs
 getScriptLogs = get >>= \acid -> query' acid GetScriptLog
 
 selectBuild
-  :: (MonadIO m, Monad m)
+  :: (MonadIO m, Monad m, MonadThrow m)
   => RacerId -> SHA -> RepoApp m ()
 selectBuild rid sha = do
   acid <- get
-  mr <- query' acid (GetRacerById rid)
-  case mr of
-    Nothing -> return ()
-    (Just racer) -> do
+  withRacer rid $
+    \racer -> do
+      runScript $ AS.BuildRacer rid sha
       update'
         acid
         (UpdateRacer $
@@ -129,7 +137,9 @@ selectBuild rid sha = do
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
 
-runScript :: (MonadIO m, MonadThrow m, AS.Script a) => a -> RepoApp m [String]
+runScript
+  :: (MonadIO m, MonadThrow m, AS.Script a)
+  => a -> RepoApp m [String]
 runScript = runScripts . Identity
 
 -- | Run the given script command. Upon an ExitFailure throw a ScriptError exception

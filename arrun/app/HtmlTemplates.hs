@@ -28,7 +28,7 @@ data Pages
   | AdminHomePage [Racer]
                   H.Html
   | NoUserPage RacerId
-  | ScriptErrorPage AS.ScriptLog
+  | ScriptErrorPage AS.ScriptLogData
   | BuildErrorPage RacerId
                    AS.ScriptLogData
   | BuildExistsPage RacerId

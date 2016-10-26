@@ -20,7 +20,6 @@ set -e
 cd $user
 
 if [[ $2 ]]; then
-  git reset --hard HEAD
   git checkout $sha
 fi
 
