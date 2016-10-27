@@ -5,9 +5,9 @@ if (( $# < 1 )); then
 	exit 1
 fi
 
-pidFile="/tmp/robotPids"
 bots=$@
 nbots=$#
+echo "" > $pidFile
 
 set -xe
 
