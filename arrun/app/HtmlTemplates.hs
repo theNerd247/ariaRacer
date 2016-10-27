@@ -111,7 +111,7 @@ instance H.ToMarkup Pages where
         do BH.col "xs-4" $ H.h3 $ H.a ! A.href (H.toValue . delRacerRt $ racer) $
              do BH.glyphicon "remove-circle"
                 H.string . (" " ++) . show $ (racer ^. racerId . unRacerId)
-           BH.col "xs-4" $ H.h3 $ H.text (racer ^. racerName)
+           BH.col "xs-4" $ H.h3 $ H.a ! A.href (H.toValue . toPathInfo . RcrRoute $ RacerRoute (racer^.racerId) Nothing) $ H.text (racer ^. racerName)
            BH.col "xs-4" $ H.h3 $ H.string $ "Builds: " ++
              (show . DL.length $ racer ^. racerBuilds)
       delRacerRt r = toPathInfo . AdmRoute . Just $ DelRacer (r ^. racerId)
