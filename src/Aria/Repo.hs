@@ -9,6 +9,8 @@ module Aria.Repo
   , getScriptLogs
   , uploadCode
   , selectBuild
+  , startRace
+  , stopRace
   , AS.scriptBasePath
   , AS.scriptStartTime
   , AS.scriptEndTime
@@ -136,6 +138,14 @@ selectBuild rid sha = do
       return ()
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
+
+startRace :: (MonadIO m, MonadThrow m, Monad m) => [RacerId] -> RepoApp m ()
+startRace [] = return ()
+startRace rs = (runScript . AS.StartRace $ rs) >> return ()
+
+stopRace :: (MonadIO m, MonadThrow m, Monad m) => [Integer] -> RepoApp m ()
+stopRace [] = return ()
+stopRace lns = (runScript . AS.StopRace $ lns) >> return ()
 
 runScript
   :: (MonadIO m, MonadThrow m, AS.Script a)
