@@ -152,9 +152,7 @@ instance H.ToMarkup Pages where
        centered $ do  
          unless raceStarted $ BH.col "xs-2" startButton
          when raceStarted $ BH.col "xs-2" $ stopButton "Stop" StopAll
-       centered $ do
-         BH.col "xs-2" $ stopButton "Lane 1" (StopLane 1)
-         BH.col "xs-2" $ stopButton "Lane 2" (StopLane 2)
+       laneStops rd
     where
       startButton = H.h1 $ H.a ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ StartRace rd) ! A.class_ "btn btn-lg btn-success" $ H.string "Start"
       stopButton txt lnk = H.h1 $ H.a ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ lnk) ! A.class_ "btn btn-lg btn-danger" $ H.string txt
@@ -162,7 +160,10 @@ instance H.ToMarkup Pages where
          BH.col "xs-4" mempty
          cnt
          BH.col "xs-4" mempty
-
+      laneStops (SingleRacerRace _) = mempty
+      laneStops (DoubleRacerRace _ _) = centered $ do
+         BH.col "xs-2" $ stopButton "Lane 1" (StopLane 1)
+         BH.col "xs-2" $ stopButton "Lane 2" (StopLane 2)
 
 racerPageButton :: RacerId -> String -> H.Html
 racerPageButton rid msg =

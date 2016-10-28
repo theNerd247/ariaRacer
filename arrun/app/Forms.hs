@@ -23,12 +23,13 @@ import qualified Data.List as DL
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Data.Text as Strict
 
-type PasteForm m a = (Happstack m, Monad m, Alternative m, Functor m) =>
-                     Form m [Input] PasteFormError Html () a
+type AriaForm m a = (Happstack m, Monad m, Alternative m, Functor m) =>
+                     Form m [Input] AriaFormError Html () a
 
-data PasteFormError
+data AriaFormError
   = WrongFileType
   | BuildNameRequired
+  | BadRaceSelect
   | CFE (CommonFormError [Input])
   deriving (Show)
 
@@ -39,16 +40,17 @@ data UploadCodeFormData = UploadCodeFormData
   , ubuildTmpFile :: FilePath
   } deriving (Show)
 
-type SetupRaceFormData = (RacerId,RacerId) 
+type SetupRaceFormData = (Maybe RacerId,Maybe RacerId) 
 
-instance FormError PasteFormError where
-  type ErrorInputType PasteFormError = [Input]
+instance FormError AriaFormError where
+  type ErrorInputType AriaFormError = [Input]
   commonFormError = CFE
 
-instance ToMarkup PasteFormError where
+instance ToMarkup AriaFormError where
   toMarkup WrongFileType = H.string "You need to upload a .cpp file"
   toMarkup BuildNameRequired = H.string "Build name required"
   toMarkup (CFE e) = H.string "Something went wrong"
+  toMarkup BadRaceSelect = H.string "You need to select at least one racer to race with"
 
 newRacerForm act handle = reform (form act) "new-racer" handle Nothing genNewRacerForm
 
@@ -56,14 +58,14 @@ uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUp
 
 setupRaceForm racers act handle = reform (form act) "setup-race" handle Nothing (genSetupRaceForm racers)
 
-genNewRacerForm :: PasteForm m NewRacerFormData
+genNewRacerForm :: AriaForm m NewRacerFormData
 genNewRacerForm =
   buttonSubmit "Submit" (glyphicon "plus" <> glyphicon "user") `setAttr`
   (A.type_ "submit" <> A.class_ "btn btn-success") *>
   inputText "" `setAttr`
   (A.placeholder "New Racer Name" <> A.class_ "form-control")
 
-genUploadCodeForm :: PasteForm m UploadCodeFormData
+genUploadCodeForm :: AriaForm m UploadCodeFormData
 genUploadCodeForm = fieldset $ bootstrapError ++> (submitButton *> uploadForm)
   where
     uploadForm = pure UploadCodeFormData <*> buildName <*> buildFile
@@ -77,30 +79,35 @@ genUploadCodeForm = fieldset $ bootstrapError ++> (submitButton *> uploadForm)
       inputText "" `transformEither` buildNameProof `setAttr`
       (A.placeholder "Build Name" <> A.class_ "form-control")
 
-genSetupRaceForm :: [Racer] -> PasteForm m SetupRaceFormData
+genSetupRaceForm :: [Racer] -> AriaForm m SetupRaceFormData
 genSetupRaceForm racers = bootstrapError ++> (submitButton *> selForm)
   where
-    selForm = pure (,) <*> selRacer <*> selRacer
-    selRacer = select selLabels defaultRacer `setAttr` (A.class_ "form-control")
-    selLabels = (\r -> (r ^. racerId, r ^. racerName)) <$> racers
-    defaultRacer = (==((head racers) ^. racerId))
+    selForm = (pure (,) <*> selRacer <*> selRacer) `transformEither` setupRaceProof
+    selRacer = select (noRacerLabel:selLabels) defaultRacer `setAttr` (A.class_ "form-control")
+    selLabels = fmap (\r -> (Just $ r ^. racerId, r ^. racerName)) $ DL.filter (view $ racerBuilds . to length . to (/=0)) racers
+    noRacerLabel = (Nothing,"No Racer Selected")
+    defaultRacer = (==Nothing)
     submitButton = buttonSubmit "Submit" (H.string "Setup Race") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
+
+setupRaceProof :: SetupRaceFormData -> Either AriaFormError SetupRaceFormData
+setupRaceProof (Nothing,Nothing) = Left BadRaceSelect
+setupRaceProof x = Right x
 
 bootstrapError
   :: (Monad m)
-  => PasteForm m ()
+  => AriaForm m ()
 bootstrapError = G.childErrors showErrors
   where
     showErrors [] = mempty
     showErrors errs = mconcat $ alertBox BootAlertDanger . toHtml <$> errs
 
-buildNameProof :: Strict.Text -> Either PasteFormError Strict.Text
+buildNameProof :: Strict.Text -> Either AriaFormError Strict.Text
 buildNameProof t =
   case Strict.null . Strict.strip $ t of
     True -> Left BuildNameRequired
     _ -> Right t
 
-cppFileProof :: FilePath -> Either PasteFormError FilePath
+cppFileProof :: FilePath -> Either AriaFormError FilePath
 cppFileProof f =
   case (DL.isSuffixOf ".cpp" f) of
     True -> Right f

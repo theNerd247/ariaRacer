@@ -33,9 +33,10 @@ data RacerBuild = RacerBuild
   , _buildDate :: UTCTime
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-newtype RaceData = RaceData
-  { _unRaceData :: (RacerId, RacerId)
-  } deriving (Eq, Show, Ord, Read, Data, Typeable, Generic)
+data RaceData = 
+    SingleRacerRace RacerId
+  | DoubleRacerRace RacerId RacerId
+  deriving (Eq, Show, Ord, Read, Data, Typeable, Generic)
 
 makeLenses ''Racer
 
@@ -45,19 +46,11 @@ makeLenses ''RacerId
 
 $(deriveSafeCopy 0 'base ''RacerId)
 
-makeLenses ''RaceData
-
 $(deriveSafeCopy 0 'base ''RaceData)
 
 makeLenses ''RacerBuild
 
 $(deriveSafeCopy 0 'base ''RacerBuild)
-
-racer1 :: Lens' RaceData RacerId
-racer1 = lens (\s -> s ^. unRaceData . _1) (\s r -> s & unRaceData . _1 .~ r)
-
-racer2 :: Lens' RaceData RacerId
-racer2 = lens (\s -> s ^. unRaceData . _2) (\s r -> s & unRaceData . _2 .~ r)
 
 currentBuildSHA :: Getter Racer (Maybe SHA)
 currentBuildSHA = to $ \r -> r ^? racerBuilds . ix (r ^. selectedBuild . to fromInteger) . buildRev

@@ -84,7 +84,11 @@ newRacerHandle rName = do
   seeOtherURL $ AdmRoute Nothing
 
 setupRaceHandle :: SetupRaceFormData -> ARRunApp Response
-setupRaceHandle rd = seeOtherURL . AdmRoute . Just . RunRace $ RaceData rd
+setupRaceHandle rd = seeOtherURL . AdmRoute . Just . RunRace $ 
+  case rd of
+    (Just r,Nothing) -> SingleRacerRace r
+    (Nothing,Just r) -> SingleRacerRace r
+    (Just r1,Just r2) -> DoubleRacerRace r1 r2
 
 racerRoutes :: RacerRoute -> ARRunApp Response
 racerRoutes route = do
