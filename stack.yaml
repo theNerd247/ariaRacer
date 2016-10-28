@@ -4,7 +4,7 @@ packages:
 - location: '.'
 - location:
     git: https://github.com/theNerd247/blaze-bootstrap.git
-    commit: eea6e8221c3f801e2677fdaf9b85b034fb8c2182
+    commit: a4bea1a841bca77c00e8e0c65092330586211e7b
 extra-deps:
 - filestore-0.6.2
 resolver: nightly-2016-09-09

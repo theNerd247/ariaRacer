@@ -37,6 +37,8 @@ route r =
   case r of
     RcrRoute d -> racerRoutes d
     AdmRoute d -> admRoutes d
+  `catch`
+  \(AS.ScriptError log) -> return . toResponse . toHtml $ ScriptErrorPage log
 
 admRoutes :: Maybe AdminRoute -> ARRunApp Response
 admRoutes Nothing = do
@@ -44,7 +46,7 @@ admRoutes Nothing = do
   rs <- query' acid GetRacers
   let racers = DL.sortBy (\r1 r2 -> (r1 ^. racerId) `compare` (r2 ^. racerId)) rs
   form <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
-  return . toResponse . toHtml $ AdminHomePage racers form
+  return . toResponse . toHtml $ AdminHomePage racers form mempty
 admRoutes (Just r) = adminRoute r
 
 adminRoute :: AdminRoute -> ARRunApp Response
@@ -81,8 +83,6 @@ runRacerAction :: Racer -> ActionRoute -> ARRunApp Response
 runRacerAction r (SelectBuild sha) = 
   do lift $ selectBuild (r ^. racerId) sha
      seeOtherURL . RcrRoute $ RacerRoute (r ^. racerId) Nothing
-  `catch`
-  \(AS.ScriptError log) -> return . toResponse . toHtml $ ScriptErrorPage log
 
 noUserPage :: RacerId -> ARRunApp Response
 noUserPage = return . toResponse . toHtml . NoUserPage

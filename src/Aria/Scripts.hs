@@ -37,6 +37,8 @@ data ScriptCommand
   | CommitBuild RacerId
                 Text
                 FilePath
+  | StartRace [RacerId]
+  | StopRace [Integer]
   deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
 -- | Log pretty much everything that a script does
@@ -85,6 +87,8 @@ instance Script ScriptCommand where
   script (UploadCode (RacerId i) file) = ("upload_code.sh", [show i, file])
   script (CommitBuild (RacerId i) buildName commitFile) =
     ("commit_racer.sh", [show i, unpack buildName, commitFile])
+  script (StartRace racers) = ("start_race.sh", show . _unRacerId <$> racers)
+  script (StopRace lanes) = ("stop_race.sh", show <$> lanes)
 
 -- | Run the command and log the result
 runScript

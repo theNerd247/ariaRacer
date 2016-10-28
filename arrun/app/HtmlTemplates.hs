@@ -26,7 +26,8 @@ data Pages
   = RacerHomePage Racer
                   H.Html
   | AdminHomePage [Racer]
-                  H.Html
+                  H.Html -- create racer form
+                  H.Html -- setup race form
   | NoUserPage RacerId
   | ScriptErrorPage AS.ScriptLogData
   | BuildErrorPage RacerId
@@ -101,10 +102,13 @@ instance H.ToMarkup Pages where
              H.text (build ^. buildName)
            BH.col "xs-5" $ H.string $ build ^. buildRev
            BH.col "xs-4" $ H.toHtml $ build ^. buildDate
-  toMarkup (AdminHomePage racers newRacerForm) =
-    appTemplate "Admin" $
-    do BH.row . BH.col "xs-12 " $ newRacerForm ! A.class_ "form-inline"
-       mconcat $ genRacerInfoHtml <$> racers
+  toMarkup (AdminHomePage racers newRacerForm setupRaceForm) =
+    appTemplate "Admin" . BH.accordion "-one" $
+       [("Manage Racers", 
+           do BH.row . BH.col "xs-12 " $ newRacerForm ! A.class_ "form-inline"
+              mconcat $ genRacerInfoHtml <$> racers)
+       ,("Setup Race",BH.row . BH.col "xs-12" $ setupRaceForm ! A.class_ "form-inline")
+       ]
     where
       genRacerInfoHtml racer =
         BH.row $
