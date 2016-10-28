@@ -101,7 +101,7 @@ instance H.ToMarkup Pages where
                 build ^.
                 buildRev) $
              H.text (build ^. buildName)
-           BH.col "xs-5" $ H.string $ build ^. buildRev
+           BH.col "xs-5" $ H.string $ build ^. buildRev . to (DL.take 8)
            BH.col "xs-4" $ H.toHtml $ build ^. buildDate
   toMarkup (AdminHomePage racers newRacerForm setupRaceForm) =
     appTemplate "Admin" . BH.accordion "-one" $
