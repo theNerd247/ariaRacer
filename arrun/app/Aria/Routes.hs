@@ -20,9 +20,12 @@ data Route
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data AdminRoute
-  = NewRacer
-  | DelRacer RacerId
+  = DelRacer RacerId
   | ScriptLogs
+  | RunRace RaceData
+  | StopAll
+  | StopLane Integer
+  | StartRace RaceData
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data RacerRoute = RacerRoute

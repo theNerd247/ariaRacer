@@ -45,8 +45,9 @@ admRoutes Nothing = do
   acid <- get
   rs <- query' acid GetRacers
   let racers = DL.sortBy (\r1 r2 -> (r1 ^. racerId) `compare` (r2 ^. racerId)) rs
-  form <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
-  return . toResponse . toHtml $ AdminHomePage racers form mempty
+  nrForm <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
+  srForm <- setupRaceForm racers (toPathInfo $ AdmRoute Nothing) setupRaceHandle
+  return . toResponse . toHtml $ AdminHomePage racers nrForm srForm
 admRoutes (Just r) = adminRoute r
 
 adminRoute :: AdminRoute -> ARRunApp Response
@@ -56,6 +57,7 @@ adminRoute ScriptLogs = do
 adminRoute (DelRacer rid) = do
   lift $ deleteRacer rid
   seeOtherURL (AdmRoute Nothing)
+adminRoute (RunRace rdata) = return . toResponse . toHtml $ RunRacePage rdata
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
@@ -66,7 +68,10 @@ newRacerHandle rName = do
     , _racerBuilds = []
     , _selectedBuild = 0
     }
-  seeOtherURL (AdmRoute Nothing)
+  seeOtherURL $ AdmRoute Nothing
+
+setupRaceHandle :: SetupRaceFormData -> ARRunApp Response
+setupRaceHandle rd = seeOtherURL . AdmRoute . Just . RunRace $ RaceData rd
 
 racerRoutes :: RacerRoute -> ARRunApp Response
 racerRoutes route = do

@@ -6,6 +6,7 @@ module Forms where
 
 import Control.Lens
 import Control.Applicative
+import Aria.Types
 import Data.Text (Text(..))
 import Happstack.Server
 import Text.Blaze.Html5 (Html)
@@ -31,6 +32,15 @@ data PasteFormError
   | CFE (CommonFormError [Input])
   deriving (Show)
 
+type NewRacerFormData = Strict.Text
+
+data UploadCodeFormData = UploadCodeFormData
+  { ubuildName :: Strict.Text
+  , ubuildTmpFile :: FilePath
+  } deriving (Show)
+
+type SetupRaceFormData = (RacerId,RacerId) 
+
 instance FormError PasteFormError where
   type ErrorInputType PasteFormError = [Input]
   commonFormError = CFE
@@ -40,16 +50,11 @@ instance ToMarkup PasteFormError where
   toMarkup BuildNameRequired = H.string "Build name required"
   toMarkup (CFE e) = H.string "Something went wrong"
 
-type NewRacerFormData = Strict.Text
-
-data UploadCodeFormData = UploadCodeFormData
-  { ubuildName :: Strict.Text
-  , ubuildTmpFile :: FilePath
-  } deriving (Show)
-
 newRacerForm act handle = reform (form act) "new-racer" handle Nothing genNewRacerForm
 
 uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUploadCodeForm
+
+setupRaceForm racers act handle = reform (form act) "setup-race" handle Nothing (genSetupRaceForm racers)
 
 genNewRacerForm :: PasteForm m NewRacerFormData
 genNewRacerForm =
@@ -71,6 +76,15 @@ genUploadCodeForm = fieldset $ bootstrapError ++> (submitButton *> uploadForm)
     buildName =
       inputText "" `transformEither` buildNameProof `setAttr`
       (A.placeholder "Build Name" <> A.class_ "form-control")
+
+genSetupRaceForm :: [Racer] -> PasteForm m SetupRaceFormData
+genSetupRaceForm racers = bootstrapError ++> (submitButton *> selForm)
+  where
+    selForm = pure (,) <*> selRacer <*> selRacer
+    selRacer = select selLabels defaultRacer `setAttr` (A.class_ "form-control")
+    selLabels = (\r -> (r ^. racerId, r ^. racerName)) <$> racers
+    defaultRacer = (==((head racers) ^. racerId))
+    submitButton = buttonSubmit "Submit" (H.string "Setup Race") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
 
 bootstrapError
   :: (Monad m)

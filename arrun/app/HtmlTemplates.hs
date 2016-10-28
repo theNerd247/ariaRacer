@@ -33,6 +33,7 @@ data Pages
   | BuildErrorPage RacerId
                    AS.ScriptLogData
   | BuildExistsPage RacerId
+  | RunRacePage RaceData
 
 instance H.ToMarkup AS.ScriptLog where
   toMarkup = H.toHtml . fmap H.toHtml
@@ -146,6 +147,22 @@ instance H.ToMarkup Pages where
     do BH.jumbotron
          (H.string "Build Already Exists and Is Already Selected")
          (racerPageButton rid "Go back")
+  toMarkup (RunRacePage rd) = appTemplate "Run Race" $ 
+    do centered $ BH.col "xs-4" $ H.h1 "Run Race!"
+       centered $ do  
+         BH.col "xs-2" startButton
+         BH.col "xs-2" $ stopButton "Stop" StopAll
+       centered $ do
+         BH.col "xs-2" $ stopButton "Lane 1" (StopLane 1)
+         BH.col "xs-2" $ stopButton "Lane 2" (StopLane 2)
+    where
+      startButton = H.h1 $ H.a ! A.href (H.toValue . toPathInfo $ StartRace rd) ! A.class_ "btn btn-lg btn-success" $ H.string "Start"
+      stopButton txt lnk = H.h1 $ H.a ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ lnk) ! A.class_ "btn btn-lg btn-danger" $ H.string txt
+      centered cnt = BH.row $ do
+         BH.col "xs-4" mempty
+         cnt
+         BH.col "xs-4" mempty
+
 
 racerPageButton :: RacerId -> String -> H.Html
 racerPageButton rid msg =
