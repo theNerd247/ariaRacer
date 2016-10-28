@@ -139,13 +139,21 @@ selectBuild rid sha = do
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
 
-startRace :: (MonadIO m, MonadThrow m, Monad m) => [RacerId] -> RepoApp m ()
-startRace [] = return ()
-startRace rs = (runScript . AS.StartRace $ rs) >> return ()
+startRace :: (MonadIO m, MonadThrow m, Monad m) => RaceData -> RepoApp m ()
+startRace (RaceData (r1,r2)) = do 
+  acid <- get
+  raceFlag <- query' acid $ GetRunRaceFlag
+  update' acid $ SetRunRaceFlag True
+  unless raceFlag $ (runScript (AS.StartRace [r1,r2]) >> return ())
+  return ()
 
 stopRace :: (MonadIO m, MonadThrow m, Monad m) => [Integer] -> RepoApp m ()
 stopRace [] = return ()
-stopRace lns = (runScript . AS.StopRace $ lns) >> return ()
+stopRace lns = do 
+  acid <- get
+  update' acid $ SetRunRaceFlag False
+  runScript . AS.StopRace $ lns 
+  return ()
 
 runScript
   :: (MonadIO m, MonadThrow m, AS.Script a)

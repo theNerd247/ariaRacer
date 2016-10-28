@@ -57,7 +57,20 @@ adminRoute ScriptLogs = do
 adminRoute (DelRacer rid) = do
   lift $ deleteRacer rid
   seeOtherURL (AdmRoute Nothing)
-adminRoute (RunRace rdata) = return . toResponse . toHtml $ RunRacePage rdata
+adminRoute (RunRace rdata) = do 
+  acid <- get
+  raceFlag <- query' acid GetRunRaceFlag
+  return . toResponse . toHtml $ RunRacePage rdata raceFlag
+adminRoute StopAll = do 
+  lift $ stopRace [1,2]
+  seeOtherURL $ AdmRoute Nothing
+adminRoute (StopLane ln) = do
+  lift $ stopRace [ln]
+  seeOtherURL $ AdmRoute Nothing
+adminRoute (StartRace rd) = do
+  lift $ startRace rd
+  seeOtherURL . AdmRoute . Just $ RunRace rd
+  
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
@@ -116,6 +129,7 @@ initRepo =
   { _racerDB = emptyRacerDB
   , _nextRacerId = RacerId 1
   , _scriptLog = []
+  , _runningRace = False
   , _scriptConfig =
     AS.ScriptConfig
     { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"

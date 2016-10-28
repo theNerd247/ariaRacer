@@ -24,11 +24,12 @@ data RepoDBState = RepoDBState
   , _nextRacerId :: RacerId
   , _scriptLog :: AS.ScriptLog
   , _scriptConfig :: AS.ScriptConfig
+  , _runningRace :: Bool
   } deriving (Eq, Ord, Show, Data, Typeable)
 
 makeLenses ''RepoDBState
 
-$(deriveSafeCopy 1 'base ''RepoDBState)
+$(deriveSafeCopy 2 'base ''RepoDBState)
 
 instance IxSet.Indexable Racer where
   empty =
@@ -86,6 +87,12 @@ getScriptConfig = _scriptConfig <$> ask
 getNextRacerId :: Query RepoDBState RacerId
 getNextRacerId = _nextRacerId <$> ask
 
+setRunRaceFlag :: Bool -> Update RepoDBState ()
+setRunRaceFlag b = modify (runningRace .~ b)
+
+getRunRaceFlag :: Query RepoDBState Bool
+getRunRaceFlag = _runningRace <$> ask
+
 $(makeAcidic
     ''RepoDBState
     [ 'insertRacer
@@ -98,4 +105,6 @@ $(makeAcidic
     , 'getScriptConfig
     , 'getRacers
     , 'getNextRacerId
+    , 'setRunRaceFlag
+    , 'getRunRaceFlag
     ])
