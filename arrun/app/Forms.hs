@@ -59,7 +59,7 @@ uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUp
 setupRaceForm racers act handle = reform (form act) "setup-race" handle Nothing (genSetupRaceForm racers)
 
 genNewRacerForm :: AriaForm m NewRacerFormData
-genNewRacerForm =
+genNewRacerForm = mkInline $ 
   buttonSubmit "Submit" (glyphicon "plus" <> glyphicon "user") `setAttr`
   (A.type_ "submit" <> A.class_ "btn btn-success") *>
   inputText "" `setAttr`
@@ -80,9 +80,11 @@ genUploadCodeForm = fieldset $ bootstrapError ++> (submitButton *> uploadForm)
       (A.placeholder "Build Name" <> A.class_ "form-control")
 
 genSetupRaceForm :: [Racer] -> AriaForm m SetupRaceFormData
-genSetupRaceForm racers = bootstrapError ++> (submitButton *> selForm)
+genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRaceProof <* submitButton)
   where
-    selForm = (pure (,) <*> selRacer <*> selRacer) `transformEither` setupRaceProof
+    selForm = pure (,) 
+      <*> (mkFormGroup $ label ("Lane 1" :: String) ++> selRacer) 
+      <*> (mkFormGroup $ label ("Lane 2" :: String) ++> selRacer) 
     selRacer = select (noRacerLabel:selLabels) defaultRacer `setAttr` (A.class_ "form-control")
     selLabels = fmap (\r -> (Just $ r ^. racerId, r ^. racerName)) $ DL.filter (view $ racerBuilds . to length . to (/=0)) racers
     noRacerLabel = (Nothing,"No Racer Selected")
@@ -92,6 +94,12 @@ genSetupRaceForm racers = bootstrapError ++> (submitButton *> selForm)
 setupRaceProof :: SetupRaceFormData -> Either AriaFormError SetupRaceFormData
 setupRaceProof (Nothing,Nothing) = Left BadRaceSelect
 setupRaceProof x = Right x
+
+mkFormGroup :: AriaForm m a -> AriaForm m a
+mkFormGroup = mapView $ H.div ! A.class_ "form-group" 
+
+mkInline :: AriaForm m a -> AriaForm m a
+mkInline = mapView $ \v -> v ! A.class_ "form-inline"
 
 bootstrapError
   :: (Monad m)

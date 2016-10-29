@@ -106,9 +106,9 @@ instance H.ToMarkup Pages where
   toMarkup (AdminHomePage racers newRacerForm setupRaceForm) =
     appTemplate "Admin" . BH.accordion "-one" $
        [("Manage Racers", 
-           do BH.row . BH.col "xs-12 " $ newRacerForm ! A.class_ "form-inline"
+           do BH.row . BH.col "xs-12 " $ newRacerForm
               mconcat $ genRacerInfoHtml <$> racers)
-       ,("Setup Race",BH.row . BH.col "xs-12" $ setupRaceForm ! A.class_ "form-inline")
+       ,("Setup Race",BH.row . BH.col "xs-12" $ setupRaceForm)
        ]
     where
       genRacerInfoHtml racer =
