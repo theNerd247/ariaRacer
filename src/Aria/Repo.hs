@@ -17,6 +17,7 @@ module Aria.Repo
   , whenRacing
   , whenNotRacing
   , getRacers
+  , withRacer
   , isRacing
   , AS.scriptBasePath
   , AS.scriptStartTime
@@ -123,7 +124,7 @@ uploadCode rid file bName =
 
 withRacer
   :: (Monad m, MonadIO m, MonadThrow m)
-  => RacerId -> (Racer -> RepoApp m ()) -> RepoApp m ()
+  => RacerId -> (Racer -> RepoApp m a) -> RepoApp m a
 withRacer rid act = do
   acid <- getAcid <$> get
   racer <- query' acid $ GetRacerById rid
@@ -152,7 +153,7 @@ selectBuild rid sha = do
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
 
-setupRace :: (MonadIO m, MonadThrow m, Monad m) => [RacerId] -> RepoApp m ()
+setupRace :: (MonadIO m, MonadThrow m, Monad m) => [(RacerId,Text)] -> RepoApp m ()
 setupRace racers = whenNotRacing $ do
     raceHist <- makeRaceHistory racers
     curRaceHistData .= Just raceHist

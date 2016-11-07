@@ -47,6 +47,7 @@ instance IxSet.Indexable RaceHistoryData where
     [ ixFun $ _rdRIds . _histRaceData
     , ixFun $ (:[]) . _rdTime . _histRaceData
     , ixFun $ (:[]) . _histRaceDate
+    , ixFun $ (:[]) . _rdBuildNames . _histRaceData
     ]
       
 emptyRacerDB :: RepoDB
@@ -104,14 +105,11 @@ getNextRacerId = _nextRacerId <$> ask
 addRaceHistory :: RaceHistoryData -> Update RepoDBState ()
 addRaceHistory d = modify $ raceHistory %~ IxSet.insert d
 
-{-getRaceHistByRId :: RacerId -> Query RepoDBState RaceHistory-}
-{-getRaceHistByRId rid = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ rid-}
+getRaceHistByRId :: RacerId -> Query RepoDBState RaceHistory
+getRaceHistByRId rid = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ rid
 
 {-getRaceHistDateRange :: UTCTime -> UTCTime -> Query RepoDBState RaceHistory-}
 {-getRaceHistDateRange (dt1,dt2) = (_raceHistory <$> ask) >>= return . IxSet.toList . getRange dt1 dt2-}
-
-{-getRecentRaceHistData :: Query RepoDBState RaceHistoryData-}
-{-getRecentRaceHistData = (_raceHistory <$> ask) >>= return . getOne . getEq 0-}
 
 $(makeAcidic
     ''RepoDBState
@@ -126,6 +124,6 @@ $(makeAcidic
     , 'getRacers
     , 'getNextRacerId
     , 'addRaceHistory
-    {-, 'getRaceHistByRId-}
+    , 'getRaceHistByRId
     {-, 'getRaceHistDateRange-}
     ])

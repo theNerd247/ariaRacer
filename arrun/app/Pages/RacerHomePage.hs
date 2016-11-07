@@ -7,6 +7,7 @@ module Pages.RacerHomePage where
 
 import Aria.Types
 import Aria.Routes
+import Aria.RaceHistory
 import Web.Routes.PathInfo (toPathInfo)
 import Control.Lens
 import HtmlTemplates
@@ -23,8 +24,8 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
-racerHomePage :: Racer -> H.Html -> H.Html
-racerHomePage racer uploadForm = appTemplate (racer ^. racerName) $ do
+racerHomePage :: Racer -> [(Text,RaceClock)] -> H.Html -> H.Html
+racerHomePage racer clks uploadForm = appTemplate (racer ^. racerName) $ do
   withBuilds $ BH.row . BH.col "xs-12" . H.h3 $
     do H.string $ "Currently Racing with Build: "
        H.text . fromJust $ racer ^? racerBuilds .
@@ -38,8 +39,9 @@ racerHomePage racer uploadForm = appTemplate (racer ^. racerName) $ do
   withBuilds $
     do BH.row $
          do BH.col "xs-3" . H.h3 $ "Build"
-            BH.col "xs-5" . H.h3 $ "Commit SHA"
-            BH.col "xs-4" . H.h3 $ "Build Date"
+            BH.col "xs-3" . H.h3 $ "Commit SHA"
+            BH.col "xs-3" . H.h3 $ "Fastest Time"
+            BH.col "xs-3" . H.h3 $ "Build Date"
        mconcat $ ((genSelBuildHtml $ racer ^. racerId)) <$>
          (racer ^. racerBuilds)
   where
@@ -54,5 +56,6 @@ racerHomePage racer uploadForm = appTemplate (racer ^. racerName) $ do
               build ^.
               buildRev) $
            H.text (build ^. buildName)
-         BH.col "xs-5" $ H.string $ build ^. buildRev . to (DL.take 8)
-         BH.col "xs-4" $ H.toHtml $ build ^. buildDate
+         BH.col "xs-3" $ H.string $ build ^. buildRev . to (DL.take 8)
+         BH.col "xs-3" $ H.string $ maybe ("- -") (show) $ lookup (build ^. buildName) clks
+         BH.col "xs-3" $ H.toHtml $ build ^. buildDate

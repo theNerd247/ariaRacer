@@ -14,6 +14,8 @@ import Aria.Types
 import Aria.Routes
 import Data.SafeCopy
 import Data.Data
+import Data.Text (Text)
+import Data.Maybe (fromJust)
 import Data.Acid.Run
 import Data.Acid.Advanced
 import Data.Serialize.Put
@@ -64,12 +66,12 @@ adminRoute ScriptLogs = do
 adminRoute (DelRacer rid) = do
   lift $ deleteRacer rid
   seeOtherURL (AdmRoute Nothing)
-adminRoute RunRace = do 
+adminRoute RunRace = 
   _curRaceHistData <$> get >>= maybe (returnPage raceNotSetupPage) (\rdata -> do
-      acid <- getAcid <$> get
-      racerNames <- (fmap $ view racerName) <$> (lift . getRacers $ rdata ^. histRaceData . rdRIds)
-      raceFlag <- lift isRacing
-      returnPage $ runRacePage (rdata ^. raceLanes) raceFlag racerNames)
+    acid <- getAcid <$> get
+    raceFlag <- lift $ isRacing
+    racerNames <- (fmap $ view racerName) <$> (lift . getRacers $ rdata ^. histRaceData . rdRIds)
+    returnPage $ runRacePage (rdata ^. raceLanes) raceFlag racerNames)
 adminRoute StopAllCmd = do 
   lift . stopRace $ Abort
   seeOtherURL $ AdmRoute Nothing
@@ -80,8 +82,14 @@ adminRoute StartRaceCmd = do
   lift startRace 
   seeOtherURL . AdmRoute $ Just RunRace 
 adminRoute (SetupRace rids) = do 
-  lift $ setupRace rids
+  builds <- computeBuilds $ rids
+  lift . setupRace $ builds
   seeOtherURL . AdmRoute $ Just RunRace
+  where
+    computeBuilds :: [RacerId] -> ARRunApp [(RacerId,Text)]
+    computeBuilds rids = forM rids $ \rid -> lift $ withRacer rid $ \racer -> do
+      let bname = racer ^?! racerBuilds . ix (fromInteger $ racer ^. selectedBuild) . buildName
+      return (rid, bname)
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
@@ -124,7 +132,18 @@ userHomePage racer rte = do
     uploadCodeForm
       (toPathInfo . RcrRoute $ rte)
       (uploadCodeHandle (racer ^. racerId))
-  returnPage $  racerHomePage racer form
+  buildClocks <- getBuildClocks
+  returnPage $ racerHomePage racer buildClocks form
+  where
+    getBuildClocks = do
+      acid <- getAcid <$> get
+      hist <- query' acid $ GetRaceHistByRId (racer ^. racerId)
+      liftIO . putStrLn . show $ hist
+      return $ (toBuildClock . _histRaceData) <$> hist
+      {-return $ [("Text",Aborted)]-}
+    toBuildClock rHistData = (rHistData ^?! rdBuildNames . ix bcInd, rHistData ^?! rdTime . ix bcInd)
+      where
+        bcInd = fromJust $ DL.elemIndex (racer ^. racerId) (rHistData ^. rdRIds)
 
 uploadCodeHandle :: RacerId -> UploadCodeFormData -> ARRunApp Response
 uploadCodeHandle r d =

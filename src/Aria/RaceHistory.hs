@@ -11,6 +11,7 @@ import Control.Concurrent.STM.TVar
 import Control.Monad
 import Data.Time (UTCTime,getCurrentTime, diffUTCTime)
 import Data.Data
+import Data.Text hiding (length,replicate,take)
 import Control.Monad.IO.Class
 import Data.SafeCopy
 import GHC.Generics hiding (to)
@@ -32,6 +33,7 @@ data StopCommand
 data RaceData = RaceData
   { _rdRIds :: [RacerId]
   , _rdTime :: RaceClocks
+  , _rdBuildNames :: [Text]
   } deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 data RaceHistoryData = RaceHistoryData
@@ -49,12 +51,12 @@ $(deriveSafeCopy 0 'base ''RaceHistoryData)
 
 $(deriveSafeCopy 0 'base ''RaceClock)
 
-$(deriveSafeCopy 1 'base ''RaceData)
+$(deriveSafeCopy 2 'base ''RaceData)
 
 raceLanes :: Getter RaceHistoryData [Int]
 raceLanes = to $ \rd -> [1 .. length(rd ^. histRaceData . rdRIds)]
 
-makeRaceHistory :: (MonadIO m) => [RacerId] -> m RaceHistoryData
+makeRaceHistory :: (MonadIO m) => [(RacerId,Text)] -> m RaceHistoryData
 makeRaceHistory racers = do
   rd <- newRaceData racers
   now <- liftIO $ getCurrentTime
@@ -87,15 +89,16 @@ startClocks
   => RaceClocks -> m RaceClocks
 startClocks clks = liftIO $ forM clks (\_ -> getCurrentTime >>= return . Running)
 
-newRaceData :: (MonadIO m) => [RacerId] -> m RaceData
+newRaceData :: (MonadIO m) => [(RacerId,Text)] -> m RaceData
 newRaceData [] = error "Bad call to newRaceData"
 newRaceData rs = do
   return $ RaceData
-    { _rdRIds = rids
-    , _rdTime = replicate (length rids) Aborted
+    { _rdRIds = fst rids
+    , _rdTime = replicate (length . fst $ rids) Aborted
+    , _rdBuildNames = snd rids
     }
   where
-    rids = take 2 rs
+    rids = unzip $ take 2 rs
 
 allStopped :: RaceHistoryData -> Bool
 allStopped hd = getAll . mconcat $ (All . isStopped) <$> hd ^. histRaceData . rdTime
