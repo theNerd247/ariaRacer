@@ -9,24 +9,27 @@ module Aria.Routes where
 
 import GHC.Generics
 import Data.Data
+import Aria.RaceHistory
 import Aria.Types
 import Control.Applicative
 import Control.Lens
 import Web.Routes.PathInfo
+import Data.Time (NominalDiffTime)
 
 data Route
   = AdmRoute (Maybe AdminRoute)
   | RcrRoute RacerRoute
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+  deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
 data AdminRoute
   = DelRacer RacerId
   | ScriptLogs
-  | RunRace RaceData
-  | StopAll
-  | StopLane Integer
-  | StartRace RaceData
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+  | RunRace
+  | StopAllCmd
+  | StopLaneCmd Int
+  | StartRaceCmd
+  | SetupRace [RacerId]
+  deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
 data RacerRoute = RacerRoute
   { _racerRouteId :: RacerId
@@ -39,9 +42,7 @@ data ActionRoute
 
 instance PathInfo RacerId
 
-instance PathInfo (RacerId, RacerId)
-
-instance PathInfo RaceData
+instance PathInfo [RacerId]
 
 instance PathInfo Route where
   toPathSegments (AdmRoute r) = ("admin" : toPathSegments r)

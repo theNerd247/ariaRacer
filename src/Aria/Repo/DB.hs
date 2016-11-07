@@ -5,6 +5,7 @@
 module Aria.Repo.DB where
 
 import Aria.Types
+import Aria.RaceHistory
 import Control.Lens
 import Control.Monad.State.Class
 import Control.Monad.Reader.Class
@@ -14,22 +15,25 @@ import Data.Acid
 import Data.Acid.Local (createCheckpointAndClose)
 import Data.Data
 import Data.Text (Text(..))
+import Data.Time (UTCTime(..))
 import qualified Data.IxSet as IxSet
 import qualified Aria.Scripts as AS
 
 type RepoDB = IxSet Racer
+
+type RaceHistoryDB = IxSet RaceHistoryData
 
 data RepoDBState = RepoDBState
   { _racerDB :: RepoDB
   , _nextRacerId :: RacerId
   , _scriptLog :: AS.ScriptLog
   , _scriptConfig :: AS.ScriptConfig
-  , _runningRace :: Bool
+  , _raceHistory :: RaceHistoryDB
   } deriving (Eq, Ord, Show, Data, Typeable)
 
 makeLenses ''RepoDBState
 
-$(deriveSafeCopy 2 'base ''RepoDBState)
+$(deriveSafeCopy 4 'base ''RepoDBState)
 
 instance IxSet.Indexable Racer where
   empty =
@@ -37,9 +41,19 @@ instance IxSet.Indexable Racer where
       [ ixFun $ (: []) . _racerId
       , ixFun $ (: []) . _racerName
       ]
+
+instance IxSet.Indexable RaceHistoryData where
+  empty = ixSet 
+    [ ixFun $ _rdRIds . _histRaceData
+    , ixFun $ (:[]) . _rdTime . _histRaceData
+    , ixFun $ (:[]) . _histRaceDate
+    ]
       
 emptyRacerDB :: RepoDB
 emptyRacerDB = IxSet.empty
+
+emptyRaceHistoryDB :: RaceHistoryDB
+emptyRaceHistoryDB = IxSet.empty
 
 insertRacer :: Racer -> Update RepoDBState RacerId
 insertRacer r = do
@@ -87,11 +101,17 @@ getScriptConfig = _scriptConfig <$> ask
 getNextRacerId :: Query RepoDBState RacerId
 getNextRacerId = _nextRacerId <$> ask
 
-setRunRaceFlag :: Bool -> Update RepoDBState ()
-setRunRaceFlag b = modify (runningRace .~ b)
+addRaceHistory :: RaceHistoryData -> Update RepoDBState ()
+addRaceHistory d = modify $ raceHistory %~ IxSet.insert d
 
-getRunRaceFlag :: Query RepoDBState Bool
-getRunRaceFlag = _runningRace <$> ask
+{-getRaceHistByRId :: RacerId -> Query RepoDBState RaceHistory-}
+{-getRaceHistByRId rid = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ rid-}
+
+{-getRaceHistDateRange :: UTCTime -> UTCTime -> Query RepoDBState RaceHistory-}
+{-getRaceHistDateRange (dt1,dt2) = (_raceHistory <$> ask) >>= return . IxSet.toList . getRange dt1 dt2-}
+
+{-getRecentRaceHistData :: Query RepoDBState RaceHistoryData-}
+{-getRecentRaceHistData = (_raceHistory <$> ask) >>= return . getOne . getEq 0-}
 
 $(makeAcidic
     ''RepoDBState
@@ -105,6 +125,7 @@ $(makeAcidic
     , 'getScriptConfig
     , 'getRacers
     , 'getNextRacerId
-    , 'setRunRaceFlag
-    , 'getRunRaceFlag
+    , 'addRaceHistory
+    {-, 'getRaceHistByRId-}
+    {-, 'getRaceHistDateRange-}
     ])

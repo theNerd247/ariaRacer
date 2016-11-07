@@ -4,9 +4,9 @@
 
 module Aria.Types where
 
-import Data.Text
+import Data.Text hiding (replicate, length, take)
 import Data.Data
-import Data.Time (UTCTime(..))
+import Data.Time (UTCTime(..), NominalDiffTime)
 import Data.SafeCopy
 import Control.Lens
 import GHC.Generics hiding (to)
@@ -14,6 +14,8 @@ import GHC.Generics hiding (to)
 type Repository = FilePath
 
 type SHA = String
+
+type RaceTime = Integer
 
 newtype RacerId = RacerId
   { _unRacerId :: Integer
@@ -33,24 +35,18 @@ data RacerBuild = RacerBuild
   , _buildDate :: UTCTime
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
-data RaceData = 
-    SingleRacerRace RacerId
-  | DoubleRacerRace RacerId RacerId
-  deriving (Eq, Show, Ord, Read, Data, Typeable, Generic)
-
 makeLenses ''Racer
 
 $(deriveSafeCopy 0 'base ''Racer)
-
-makeLenses ''RacerId
-
-$(deriveSafeCopy 0 'base ''RacerId)
-
-$(deriveSafeCopy 0 'base ''RaceData)
 
 makeLenses ''RacerBuild
 
 $(deriveSafeCopy 0 'base ''RacerBuild)
 
+makeLenses ''RacerId
+
+$(deriveSafeCopy 0 'base ''RacerId)
+
 currentBuildSHA :: Getter Racer (Maybe SHA)
-currentBuildSHA = to $ \r -> r ^? racerBuilds . ix (r ^. selectedBuild . to fromInteger) . buildRev
+currentBuildSHA =
+  to $ \r -> r ^? racerBuilds . ix (r ^. selectedBuild . to fromInteger) . buildRev

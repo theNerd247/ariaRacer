@@ -8,7 +8,8 @@
 module Main where
 
 import Aria.Repo
-import Aria.Repo.DB
+import Aria.Repo.DB hiding (getRacers)
+import Aria.RaceHistory
 import Aria.Types
 import Aria.Routes
 import Data.SafeCopy
@@ -16,7 +17,10 @@ import Data.Data
 import Data.Acid.Run
 import Data.Acid.Advanced
 import Data.Serialize.Put
+import Data.Time (getCurrentTime)
 import Data.List (intersperse)
+import Control.Monad.STM (atomically)
+import Control.Concurrent.STM.TVar
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.State
 import Control.Lens
@@ -24,53 +28,60 @@ import Happstack.Server
 import Web.Routes
 import Web.Routes.Happstack
 import Control.Monad.Catch
-import Text.Blaze.Html (toHtml)
-import HtmlTemplates
+import Text.Blaze.Html (ToMarkup,toHtml)
+import Pages
 import Forms
+import Data.Maybe (catMaybes)
 import qualified Aria.Scripts as AS
 import qualified Data.List as DL
 
 type ARRunApp = RouteT Route (RepoApp (ServerPartT IO))
 
+returnPage :: (ToMarkup a) => a -> ARRunApp Response
+returnPage = return . toResponse . toHtml 
+
 route :: Route -> ARRunApp Response
-route r =
-  case r of
-    RcrRoute d -> racerRoutes d
-    AdmRoute d -> admRoutes d
+route r = case r of
+  RcrRoute d -> racerRoutes d
+  AdmRoute d -> admRoutes d
   `catch`
-  \(AS.ScriptError log) -> return . toResponse . toHtml $ ScriptErrorPage log
+  \(AS.ScriptError log) -> returnPage $  scriptErrorPage log
 
 admRoutes :: Maybe AdminRoute -> ARRunApp Response
 admRoutes Nothing = do
-  acid <- get
+  acid <- getAcid <$> get
   rs <- query' acid GetRacers
   let racers = DL.sortBy (\r1 r2 -> (r1 ^. racerId) `compare` (r2 ^. racerId)) rs
   nrForm <- newRacerForm (toPathInfo $ AdmRoute Nothing) newRacerHandle
   srForm <- setupRaceForm racers (toPathInfo $ AdmRoute Nothing) setupRaceHandle
-  return . toResponse . toHtml $ AdminHomePage racers nrForm srForm
+  returnPage $  adminHomePage racers nrForm srForm
 admRoutes (Just r) = adminRoute r
 
 adminRoute :: AdminRoute -> ARRunApp Response
 adminRoute ScriptLogs = do
   log <- lift getScriptLogs
-  return . toResponse . toHtml $ log
+  returnPage $  log
 adminRoute (DelRacer rid) = do
   lift $ deleteRacer rid
   seeOtherURL (AdmRoute Nothing)
-adminRoute (RunRace rdata) = do 
-  acid <- get
-  raceFlag <- query' acid GetRunRaceFlag
-  return . toResponse . toHtml $ RunRacePage rdata raceFlag
-adminRoute StopAll = do 
-  lift $ stopRace [1,2]
+adminRoute RunRace = do 
+  _curRaceHistData <$> get >>= maybe (returnPage raceNotSetupPage) (\rdata -> do
+      acid <- getAcid <$> get
+      racerNames <- (fmap $ view racerName) <$> (lift . getRacers $ rdata ^. histRaceData . rdRIds)
+      raceFlag <- lift isRacing
+      returnPage $ runRacePage (rdata ^. raceLanes) raceFlag racerNames)
+adminRoute StopAllCmd = do 
+  lift . stopRace $ Abort
   seeOtherURL $ AdmRoute Nothing
-adminRoute (StopLane ln) = do
-  lift $ stopRace [ln]
-  seeOtherURL $ AdmRoute Nothing
-adminRoute (StartRace rd) = do
-  lift $ startRace rd
-  seeOtherURL . AdmRoute . Just $ RunRace rd
-  
+adminRoute (StopLaneCmd ln) = do
+  lift . stopRace $ StopLane ln
+  seeOtherURL . AdmRoute $ Just RunRace
+adminRoute StartRaceCmd = do
+  lift startRace 
+  seeOtherURL . AdmRoute $ Just RunRace 
+adminRoute (SetupRace rids) = do 
+  lift $ setupRace rids
+  seeOtherURL . AdmRoute $ Just RunRace
 
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
@@ -84,17 +95,18 @@ newRacerHandle rName = do
   seeOtherURL $ AdmRoute Nothing
 
 setupRaceHandle :: SetupRaceFormData -> ARRunApp Response
-setupRaceHandle rd = seeOtherURL . AdmRoute . Just . RunRace $ 
-  case rd of
-    (Just r,Nothing) -> SingleRacerRace r
-    (Nothing,Just r) -> SingleRacerRace r
-    (Just r1,Just r2) -> DoubleRacerRace r1 r2
+setupRaceHandle rd = seeOtherURL . AdmRoute . Just $ SetupRace racers
+  where
+    racers = case rd of
+      (Just r,Nothing) -> [r]
+      (Nothing,Just r) -> [r]
+      (Just r1,Just r2) -> [r1,r2]
 
 racerRoutes :: RacerRoute -> ARRunApp Response
 racerRoutes route = do
-  acid <- get
+  acid <- getAcid <$> get
   r <- query' acid (GetRacerById $ route ^. racerRouteId)
-  maybe (noUserPage $ route ^. racerRouteId) (runRoute) r
+  maybe (returnPage . noUserPage $ route ^. racerRouteId) (runRoute) r
   where
     runRoute racer =
       case route ^. actionRoute of
@@ -106,16 +118,13 @@ runRacerAction r (SelectBuild sha) =
   do lift $ selectBuild (r ^. racerId) sha
      seeOtherURL . RcrRoute $ RacerRoute (r ^. racerId) Nothing
 
-noUserPage :: RacerId -> ARRunApp Response
-noUserPage = return . toResponse . toHtml . NoUserPage
-
 userHomePage :: Racer -> RacerRoute -> ARRunApp Response
 userHomePage racer rte = do
   form <-
     uploadCodeForm
       (toPathInfo . RcrRoute $ rte)
       (uploadCodeHandle (racer ^. racerId))
-  return . toResponse . toHtml $ (RacerHomePage racer form)
+  returnPage $  racerHomePage racer form
 
 uploadCodeHandle :: RacerId -> UploadCodeFormData -> ARRunApp Response
 uploadCodeHandle r d =
@@ -124,36 +133,41 @@ uploadCodeHandle r d =
   `catch`
   \(AS.ScriptError log) ->
      case ((log ^. AS.scriptFile . to (DL.isSubsequenceOf "commit")  == True) && log ^. AS.exitCode == 1) of
-       True -> return . toResponse . toHtml $ BuildExistsPage r
-       _ -> return . toResponse . toHtml $ BuildErrorPage r log
+       True -> returnPage $  buildExistsPage r
+       _ -> returnPage $ buildErrorPage r log
 
 initRepo :: RepoDBState
-initRepo =
-  RepoDBState
+initRepo = RepoDBState
   { _racerDB = emptyRacerDB
   , _nextRacerId = RacerId 1
   , _scriptLog = []
-  , _runningRace = False
+  , _raceHistory = emptyRaceHistoryDB
   , _scriptConfig =
     AS.ScriptConfig
     { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
     , AS._scriptCwd = "/tmp/arrun"
     }
-  }
+  } 
 
-runRoutes :: RepoAppState -> Site Route (ServerPartT IO Response)
-runRoutes initState =
-  mkSitePI $
-  \showFun url -> flip evalStateT initState $ runRouteT route showFun url
+instance Show RepoAppState where
+  show = show . view curRaceHistData
+  
+runRoutes :: TVar RepoAppState -> Site Route (ServerPartT IO Response)
+runRoutes stateRef = mkSitePI $ \showFun url -> do 
+  state <- liftIO . atomically $ readTVar stateRef
+  (r,s) <- flip runStateT state $ runRouteT route showFun url
+  liftIO . atomically $ writeTVar stateRef s 
+  return r
 
 main = do
   withAcid (Just "/tmp/_state") initRepo $
     \acidState -> do
-      simpleHTTP nullConf $
-        do decodeBody (defaultBodyPolicy "/tmp" 10000000 10000000 10000000)
-           mconcat $
-             [ (implSite "" "" $ runRoutes acidState)
-             , (mconcat $
-                [ (dir d $ serveDirectory DisableBrowsing [] d)
-                | d <- ["css", "js", "fonts"] ])
-             ]
+        siteState <- newTVarIO (RepoAppState acidState Nothing)
+        simpleHTTP nullConf $
+          do decodeBody (defaultBodyPolicy "/tmp" 10000000 10000000 10000000)
+             mconcat $
+               [ implSite "" "" $ runRoutes siteState
+               , (mconcat $
+                  [ (dir d $ serveDirectory DisableBrowsing [] d)
+                  | d <- ["css", "js", "fonts"] ])
+               ]

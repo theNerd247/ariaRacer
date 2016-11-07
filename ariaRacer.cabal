@@ -20,6 +20,7 @@ library
                      , Aria.Repo
                      , Data.Acid.Run
                      , Aria.Scripts
+                     , Aria.RaceHistory
                      , Thread.Pool
   build-depends:       base
                      , acid-state
@@ -80,6 +81,7 @@ executable arrun
                      , text
                      , time
                      , transformers
+                     , stm
                      , web-routes
                      , web-routes-happstack
 
