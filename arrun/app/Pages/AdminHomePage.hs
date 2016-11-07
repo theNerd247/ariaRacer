@@ -20,12 +20,13 @@ import qualified Text.Blaze.Bootstrap as BH
 
 adminHomePage :: [Racer] -> H.Html -> H.Html -> H.Html
 adminHomePage racers newRacerForm setupRaceForm = appTemplate "Admin" $ 
-  BH.accordion "-one" $
-  [ ( "Manage Racers"
-    , do BH.row . BH.col "xs-12 " $ newRacerForm
-         mconcat $ genRacerInfoHtml <$> racers)
-  , ("Setup Race", BH.row . BH.col "xs-12" $ setupRaceForm)
-  ]
+  do BH.row . BH.col "xs-12" $ H.a ! A.class_ "btn btn-default" ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ ScriptLogs) $ "Script Logs"
+     BH.accordion "-one" $
+       [ ( "Manage Racers"
+         , do BH.row . BH.col "xs-12 " $ newRacerForm
+              mconcat $ genRacerInfoHtml <$> racers)
+       , ("Setup Race", BH.row . BH.col "xs-12" $ setupRaceForm)
+       ]
   where
     genRacerInfoHtml racer =
       BH.row $
@@ -40,5 +41,3 @@ adminHomePage racers newRacerForm setupRaceForm = appTemplate "Admin" $
          BH.col "xs-4" $ H.h3 $ H.string $ "Builds: " ++
            (show . DL.length $ racer ^. racerBuilds)
     delRacerRt r = toPathInfo . AdmRoute . Just $ DelRacer (r ^. racerId)
-
-
