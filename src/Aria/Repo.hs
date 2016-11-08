@@ -169,11 +169,15 @@ startRace = whenRacing () $ \hd -> do
 stopRace :: (MonadIO m, MonadThrow m, Monad m) => StopCommand -> RepoApp m ()
 stopRace cmd = whenRacing () $ \raceHist -> do
   runScript . AS.StopRace $ toLaneNumbers cmd
+  liftIO . putStrLn . show $ toLaneNumbers cmd
   newHist <- stopRaceClocks cmd raceHist
   curRaceHistData .= Just newHist
+  liftIO . putStrLn . show $ newHist
+  liftIO . putStrLn . show $ allStopped newHist
   when (allStopped newHist) $ do 
     acid <- getAcid <$> get
     update' acid . AddRaceHistory $ newHist
+    liftIO . putStrLn $ "All is stopped!"
     curRaceHistData .= Nothing
   where
     toLaneNumbers Abort = [1,2]

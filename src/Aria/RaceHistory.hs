@@ -78,7 +78,7 @@ stopClocks
 stopClocks Abort rc = return $ const Aborted <$> rc
 stopClocks (StopLane i) rc = do 
   now <- liftIO getCurrentTime
-  return $ rc & ix i %~ setClock (Finished . floor . toRational . diffUTCTime now)
+  return $ rc & ix (i-1) %~ setClock (Finished . floor . toRational . diffUTCTime now)
 
 setClock :: (UTCTime -> RaceClock) -> RaceClock -> RaceClock
 setClock f (Running t) = f t
