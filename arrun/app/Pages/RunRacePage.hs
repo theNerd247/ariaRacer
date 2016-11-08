@@ -29,8 +29,8 @@ runRacePage lanes raceStarted rNames =
   appTemplate "Run Race" $
   do BH.row . BH.col "xs-12" $ H.h1 "Run Race!"
      BH.row $
-       do BH.col "xs-6" $ H.h2 "Lane 1" <> (H.text $ rNames ^?! ix 0)
-          BH.col "xs-6" $ H.h2 "Lane 2" <> (H.text $ rNames ^?! ix 1)
+       do BH.col "xs-6" $ H.h2 "Lane 1" <> (H.text . maybe ("No Racer") id $ rNames ^? ix 0)
+          BH.col "xs-6" $ H.h2 "Lane 2" <> (H.text . maybe ("No Racer") id $ rNames ^? ix 1)
      BH.row $ 
        do BH.col "xs-4" mempty
           unless raceStarted $ BH.col "xs-4" startButton
