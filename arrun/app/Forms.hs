@@ -86,8 +86,9 @@ genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRac
       <*> (mkFormGroup $ label ("Lane 1" :: String) ++> selRacer) 
       <*> (mkFormGroup $ label ("Lane 2" :: String) ++> selRacer) 
     selRacer = select (noRacerLabel:selLabels) defaultRacer `setAttr` (A.class_ "form-control")
-    selLabels = fmap (\r -> (Just $ r ^. racerId, r ^. racerName)) $ DL.filter (view $ racerBuilds . to length . to (/=0)) racers
+    selLabels = fmap (\r -> (Just $ r ^. racerId, racerLabel r)) $ DL.filter (view $ racerBuilds . to length . to (/=0)) racers
     noRacerLabel = (Nothing,"No Racer Selected")
+    racerLabel r = (H.string $ r ^. racerId . unRacerId. to show) <> " - " <> (H.text $ r ^. racerName)
     defaultRacer = (==Nothing)
     submitButton = buttonSubmit "Submit" (H.string "Setup Race") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
 
