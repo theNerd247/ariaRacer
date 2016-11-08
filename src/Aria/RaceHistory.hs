@@ -28,6 +28,7 @@ type RaceClocks = [RaceClock]
 data StopCommand
   = StopLane Int
   | Abort
+  | AbortLane Int
   deriving (Show, Read, Ord, Eq, Data, Typeable)
 
 data RaceData = RaceData
@@ -75,7 +76,8 @@ stopRaceClocks cmd hist = do
 stopClocks
   :: (MonadIO m)
   => StopCommand -> RaceClocks -> m RaceClocks
-stopClocks Abort rc = return $ const Aborted <$> rc
+stopClocks Abort rc = return $ const Aborted <$> rc 
+stopClocks (AbortLane i) rc = return $ rc & ix (i-1) .~ Aborted
 stopClocks (StopLane i) rc = do 
   now <- liftIO getCurrentTime
   return $ rc & ix (i-1) %~ setClock (Finished . floor . toRational . diffUTCTime now)

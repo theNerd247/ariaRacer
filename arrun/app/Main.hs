@@ -76,6 +76,9 @@ adminRoute RunRace =
 adminRoute StopAllCmd = do 
   lift . stopRace $ Abort
   seeOtherURL $ AdmRoute Nothing
+adminRoute (AbortLaneCmd lane) = do
+  lift . stopRace $ AbortLane lane
+  seeOtherURL . AdmRoute $ Just RunRace
 adminRoute (StopLaneCmd ln) = do
   lift . stopRace $ StopLane ln
   seeOtherURL . AdmRoute $ Just RunRace

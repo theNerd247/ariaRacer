@@ -27,6 +27,7 @@ data AdminRoute
   | RunRace
   | StopAllCmd
   | StopLaneCmd Int
+  | AbortLaneCmd Int
   | StartRaceCmd
   | SetupRace [RacerId]
   deriving (Eq, Ord, Show, Data, Typeable, Generic)

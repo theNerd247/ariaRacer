@@ -177,6 +177,7 @@ stopRace cmd = whenRacing () $ \raceHist -> do
     curRaceHistData .= Nothing
   where
     toLaneNumbers Abort = [1,2]
+    toLaneNumbers (AbortLane i) = [toInteger i]
     toLaneNumbers (StopLane i) = [toInteger i]
     
 whenRacing :: (Monad m) => a -> (RaceHistoryData -> RepoApp m a) -> RepoApp m a

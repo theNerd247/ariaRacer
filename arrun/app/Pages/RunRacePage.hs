@@ -27,14 +27,16 @@ import qualified Text.Blaze.Bootstrap as BH
 runRacePage :: [Int] -> Bool -> [Text] -> H.Html
 runRacePage lanes raceStarted rNames =
   appTemplate "Run Race" $
-  do centered $ BH.col "xs-4" $ H.h1 "Run Race!"
-     centered $
-       do BH.col "xs-2" $ H.h2 "Lane 1" <> (H.text $ rNames ^?! ix 0)
-          BH.col "xs-2" $ H.h2 "Lane 2" <> (H.text $ rNames ^?! ix 1)
-     centered $
-       do unless raceStarted $ BH.col "xs-2" startButton
-          when raceStarted $ BH.col "xs-2" $ stopButton "Abort Race" StopAllCmd
-     laneStops
+  do BH.row . BH.col "xs-12" $ H.h1 "Run Race!"
+     BH.row $
+       do BH.col "xs-6" $ H.h2 "Lane 1" <> (H.text $ rNames ^?! ix 0)
+          BH.col "xs-6" $ H.h2 "Lane 2" <> (H.text $ rNames ^?! ix 1)
+     BH.row $ 
+       do BH.col "xs-4" mempty
+          unless raceStarted $ BH.col "xs-4" startButton
+          when raceStarted $ BH.col "xs-4" $ stopButton "Abort Race" StopAllCmd
+          BH.col "xs-4" mempty
+     when raceStarted laneStops
   where
     startButton =
       H.h1 $
@@ -46,14 +48,11 @@ runRacePage lanes raceStarted rNames =
       H.a ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ lnk) !
       A.class_ "btn btn-lg btn-danger" $
       H.string txt
-    centered cnt =
-      BH.row $
-      do BH.col "xs-4" mempty
-         cnt
-         BH.col "xs-4" mempty
     laneStops =
-      centered . mconcat $
-      [ BH.col "xs-2" $ stopButton ("Lane " ++ show i) (StopLaneCmd i)
+      mconcat $
+      [ BH.row $
+          do BH.col "xs-6" $ stopButton ("Lane " ++ show i ++ " Finished") (StopLaneCmd i) 
+             BH.col "xs-6" $ stopButton ("Abort Lane " ++ show i) (AbortLaneCmd i)
       | i <- [1 .. length lanes] ]
 
 raceNotSetupPage :: H.Html
