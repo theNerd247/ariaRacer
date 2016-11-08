@@ -15,6 +15,7 @@ import Aria.Routes
 import Data.SafeCopy
 import Data.Data
 import Data.Text (Text)
+import Data.Ord (comparing)
 import Data.Maybe (fromJust)
 import Data.Acid.Run
 import Data.Acid.Advanced
@@ -138,9 +139,7 @@ userHomePage racer rte = do
     getBuildClocks = do
       acid <- getAcid <$> get
       hist <- query' acid $ GetRaceHistByRId (racer ^. racerId)
-      liftIO . putStrLn . show $ hist
-      return $ (toBuildClock . _histRaceData) <$> hist
-      {-return $ [("Text",Aborted)]-}
+      return . DL.sortBy (comparing snd) $ (toBuildClock . _histRaceData) <$> hist
     toBuildClock rHistData = (rHistData ^?! rdBuildNames . ix bcInd, rHistData ^?! rdTime . ix bcInd)
       where
         bcInd = fromJust $ DL.elemIndex (racer ^. racerId) (rHistData ^. rdRIds)
