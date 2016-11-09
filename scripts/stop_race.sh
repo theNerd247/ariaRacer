@@ -7,6 +7,11 @@ fi
 
 set -xe
 
+nbots=$#
+pidFile=/tmp/robPids
+
 for i in $nbots; do
-	kill $(head -n ${@:$i:1} $pidFile | tail -1)
+	racer=${@:$i:1}
+	echo "killing lane $i"
+	kill $(cat "$pidFile"_$racer)
 done
