@@ -19,6 +19,8 @@ module Aria.Repo
   , getRacers
   , withRacer
   , isRacing
+  , getRacerBuild
+  , getRacerBuilds
   , AS.scriptBasePath
   , AS.scriptStartTime
   , AS.scriptEndTime
@@ -65,6 +67,12 @@ data RacerNotFound =
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 instance Exception RacerNotFound
+
+data InvalidBuildError = InvalidBuildError
+  RacerId
+  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Exception InvalidBuildError
 
 makeLenses ''RepoAppState
 
@@ -153,9 +161,10 @@ selectBuild rid sha = do
   where
     setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
 
-setupRace :: (MonadIO m, MonadThrow m, Monad m) => [(RacerId,Text)] -> RepoApp m ()
+setupRace :: (MonadIO m, MonadThrow m, Monad m) => [RacerId] -> RepoApp m ()
 setupRace racers = whenNotRacing $ do
-    raceHist <- makeRaceHistory racers
+    builds <- getRacerBuilds racers
+    raceHist <- makeRaceHistory builds
     curRaceHistData .= Just raceHist
     return ()
 
@@ -195,6 +204,14 @@ getRacers rids = do
   forM rids $ \rid -> 
     do racer <- query' acid $ GetRacerById rid
        maybe (throwM $ RacerNotFound rid) (return) racer
+
+getRacerBuilds :: (MonadIO m, MonadThrow m) => [RacerId] -> RepoApp m [(RacerId,Text)]
+getRacerBuilds rids = forM rids getRacerBuild
+
+getRacerBuild :: (MonadIO m, MonadThrow m) => RacerId -> RepoApp m (RacerId,Text)
+getRacerBuild rid =  withRacer rid $ \racer -> do
+  let bname = racer ^? racerBuilds . ix (fromInteger $ racer ^. selectedBuild) . buildName
+  maybe (throwM $ InvalidBuildError rid) (\bn -> return (rid,bn)) $ bname
 
 runScript
   :: (MonadIO m, MonadThrow m, AS.Script a)

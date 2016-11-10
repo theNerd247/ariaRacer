@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Aria.Repo.DB
+  exposed-modules:     Aria
+                     , Aria.Repo.DB
                      , Aria.Types
                      , Aria.Repo
                      , Data.Acid.Run
@@ -29,10 +30,12 @@ library
                      , containers
                      , directory
                      , array
+                     , aeson
                      , exceptions
                      , filepath
                      , ixset
                      , lens
+                     , network-simple
                      , mtl
                      , process
                      , stm

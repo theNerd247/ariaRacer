@@ -90,11 +90,6 @@ adminRoute (SetupRace rids) = do
   lift . setupRace $ builds
   seeOtherURL . AdmRoute $ Just RunRace
   where
-    computeBuilds :: [RacerId] -> ARRunApp [(RacerId,Text)]
-    computeBuilds rids = forM rids $ \rid -> lift $ withRacer rid $ \racer -> do
-      let bname = racer ^?! racerBuilds . ix (fromInteger $ racer ^. selectedBuild) . buildName
-      return (rid, bname)
-
 newRacerHandle :: NewRacerFormData -> ARRunApp Response
 newRacerHandle rName = do
   lift $ newRacer $
