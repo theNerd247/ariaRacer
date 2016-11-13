@@ -19,8 +19,11 @@ import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
 adminHomePage :: [Racer] -> H.Html -> H.Html -> H.Html
-adminHomePage racers newRacerForm setupRaceForm = appTemplate "Admin" $ 
-  do BH.row . BH.col "xs-12" $ H.a ! A.class_ "btn btn-default" ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ ScriptLogs) $ "Script Logs"
+adminHomePage racers newRacerForm setupRaceForm =
+  appTemplate "Admin" $
+  do BH.row . BH.col "xs-12" $ H.a ! A.class_ "btn btn-default" !
+       A.href (H.toValue . makeAdminRoute $ ScriptLogCmd) $
+       "Script Logs"
      BH.accordion "-one" $
        [ ( "Manage Racers"
          , do BH.row . BH.col "xs-12 " $ newRacerForm
@@ -34,10 +37,8 @@ adminHomePage racers newRacerForm setupRaceForm = appTemplate "Admin" $
            do BH.glyphicon "remove-circle"
               H.string . (" " ++) . show $ (racer ^. racerId . unRacerId)
          BH.col "xs-4" $ H.h3 $ H.a !
-           A.href
-             (H.toValue . toPathInfo . RcrRoute $
-              RacerRoute (racer ^. racerId) Nothing) $
+           A.href (H.toValue . racerHomeRoute $ (racer ^. racerId)) $
            H.text (racer ^. racerName)
          BH.col "xs-4" $ H.h3 $ H.string $ "Builds: " ++
            (show . DL.length $ racer ^. racerBuilds)
-    delRacerRt r = toPathInfo . AdmRoute . Just $ DelRacer (r ^. racerId)
+    delRacerRt r = makeAdminRoute $ DelRacer (r ^. racerId)

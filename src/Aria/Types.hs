@@ -17,6 +17,8 @@ type SHA = String
 
 type RaceTime = Integer
 
+type BuildName = Text
+
 newtype RacerId = RacerId
   { _unRacerId :: Integer
   } deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
@@ -25,14 +27,14 @@ newtype RacerId = RacerId
 data Racer = Racer
   { _racerName :: Text -- ^ The racer's real name
   , _racerId :: RacerId
-  , _racerBuilds :: [RacerBuild]
-  , _selectedBuild :: Integer
+  , _selectedBuild :: Maybe BuildName
   } deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
 data RacerBuild = RacerBuild
-  { _buildName :: Text
+  { _buildName :: BuildName
   , _buildRev :: SHA
   , _buildDate :: UTCTime
+  , _buildRacerId :: RacerId
   } deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 makeLenses ''Racer
@@ -46,7 +48,3 @@ $(deriveSafeCopy 0 'base ''RacerBuild)
 makeLenses ''RacerId
 
 $(deriveSafeCopy 0 'base ''RacerId)
-
-currentBuildSHA :: Getter Racer (Maybe SHA)
-currentBuildSHA =
-  to $ \r -> r ^? racerBuilds . ix (r ^. selectedBuild . to fromInteger) . buildRev

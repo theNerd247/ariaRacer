@@ -8,11 +8,25 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ExistentialQuantification #-}
 
-module Aria where
+module Aria
+  ( module Aria.Types
+  , module Aria.Commands
+  , module Aria.RaceHistory
+  , module Aria.Repo
+  , runAriaCommand
+  , serveAriaCommands
+  , ArCommand
+  , AriaServerConfig(..)
+  , AriaServerApp
+  , maxReceive
+  , ariaServerAddress
+  , ariaServerPort
+  ) where
 
 import Aria.Types
 import Aria.Repo
 import Aria.RaceHistory
+import Aria.Commands
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
@@ -28,37 +42,15 @@ import Data.Maybe (fromJust)
 import Data.Acid.Run
 import Data.Data
 import Data.Aeson
-       (FromJSON, ToJSON, encode, decodeStrict, toJSON, parseJSON)
-import Data.Aeson.Types (Value,Parser)
+       (FromJSON, ToJSON, encode, eitherDecodeStrict, toJSON, parseJSON)
 import GHC.Generics
 import Network.Simple.TCP
+import Data.SafeCopy
 import Thread.Pool
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
-
-data StartRaceCmd =
-  StartRaceCmd
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-data StopAllCmd =
-  StopAllCmd
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-data StopLaneCmd =
-  StopLaneCmd Int
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-data AbortLaneCmd =
-  AbortLaneCmd Int
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-data SetupRaceCmd =
-  SetupRaceCmd [RacerId]
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-data IsRacingCmd =
-  IsRacingCmd
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
+import qualified Data.ByteString.Char8 as BSC
+import qualified Aria.Scripts as AS
 
 data AriaServerConfig = AriaServerConfig
   { _ariaServerAddress :: HostName
@@ -68,113 +60,163 @@ data AriaServerConfig = AriaServerConfig
 
 makeLenses ''AriaServerConfig
 
-data BadCmdCall =
-  BadCmdCall
+data TCPReceiveFailed =
+  TCPReceiveFailed
+  deriving (Eq, Ord, Show, Read, Data, Typeable)
+
+data DecodeError =
+  DecodeError String
   deriving (Eq, Ord, Show, Read, Data, Typeable)
 
 type AriaServerApp = ReaderT AriaServerConfig
 
-class (ToJSON a, FromJSON a) => AriaCommand a  where
-  type AriaCmdResult a :: *
-  type AriaCmdResult a = ()
-  ariaCmd :: (MonadIO m, MonadThrow m, MonadCatch m) => a -> RepoApp m (AriaCmdResult a)
-
-data ArCommand = 
-   StartRaceCmd' StartRaceCmd
-  |StopAllCmd' StopAllCmd
-  |StopLaneCmd' StopLaneCmd
-  |AbortLaneCmd' AbortLaneCmd
-  |SetupRaceCmd' SetupRaceCmd
-  |IsRacingCmd' IsRacingCmd
+data ArCommand
+  = StartRaceCmd' StartRaceCmd
+  | StopRaceCmd' StopRaceCmd
+  | SetupRaceCmd' SetupRaceCmd
+  | IsRacingCmd' IsRacingCmd
+  | ScriptLogCmd' ScriptLogCmd
+  | NewRacerCmd' NewRacerCmd
+  | DelRacerCmd' DelRacerCmd
+  | SelectBuildCmd' SelectBuildCmd
+  | UploadCodeCmd' UploadCodeCmd
+  | GetCurRaceDataCmd' GetCurRaceDataCmd
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data AriaThreadPoolResult = forall a. (ToJSON a) => AriaThreadPoolResult a
+$(deriveSafeCopy 0 'base ''ArCommand)
 
-type AriaThreadPool = ThreadPool AriaThreadPoolResult
+data ToJSONResult =
+  forall a. (ToJSON a) =>
+            ToJSONResult a
 
-instance ToJSON RacerId
+type AriaThreadPool = ThreadPool ToJSONResult
 
-instance ToJSON StartRaceCmd
+class (ToJSON a, FromJSON a, ToJSON (AriaCmdResult a)) =>
+      AriaCommand a  where
+  type AriaCmdResult a :: *
+  type AriaCmdResult a = ()
+  ariaCmd
+    :: (MonadIO m, MonadThrow m, MonadCatch m)
+    => a -> RepoApp m (AriaCmdResult a)
+  toArCommand :: a -> ArCommand
 
-instance ToJSON StopAllCmd
 
-instance ToJSON StopLaneCmd
+instance Exception TCPReceiveFailed
 
-instance ToJSON AbortLaneCmd
+instance Exception DecodeError
 
-instance ToJSON SetupRaceCmd
-
-instance ToJSON IsRacingCmd
-
-instance FromJSON RacerId
-
-instance FromJSON StartRaceCmd
-
-instance FromJSON StopAllCmd
-
-instance FromJSON StopLaneCmd
-
-instance FromJSON AbortLaneCmd
-
-instance FromJSON SetupRaceCmd
-
-instance FromJSON IsRacingCmd
-
-instance FromJSON ArCommand
-
-instance Exception BadCmdCall
-
-instance ToJSON AriaThreadPoolResult where
-  toJSON (AriaThreadPoolResult a) = toJSON a
+instance ToJSON ToJSONResult where
+  toJSON (ToJSONResult a) = toJSON a
 
 instance AriaCommand StartRaceCmd where
   ariaCmd StartRaceCmd = startRace
+  toArCommand = StartRaceCmd'
 
-instance AriaCommand StopAllCmd where
-  ariaCmd StopAllCmd = stopRace Abort
-
-instance AriaCommand StopLaneCmd where
-  ariaCmd (StopLaneCmd l) = stopRace . StopLane $ l
-
-instance AriaCommand AbortLaneCmd where
-  ariaCmd (AbortLaneCmd l) = stopRace . AbortLane $ l
+instance AriaCommand StopRaceCmd where
+  ariaCmd (StopRaceCmd cmd) = stopRace cmd
+  toArCommand = StopRaceCmd'
 
 instance AriaCommand SetupRaceCmd where
   ariaCmd (SetupRaceCmd rids) = setupRace rids
+  toArCommand = SetupRaceCmd'
 
 instance AriaCommand IsRacingCmd where
   type AriaCmdResult IsRacingCmd = Bool
   ariaCmd IsRacingCmd = isRacing
+  toArCommand = IsRacingCmd'
+
+instance AriaCommand ScriptLogCmd where
+  type AriaCmdResult ScriptLogCmd = AS.ScriptLog
+  ariaCmd (ScriptLogCmd) = getScriptLogs
+  toArCommand = ScriptLogCmd'
+
+instance AriaCommand NewRacerCmd where
+  type AriaCmdResult NewRacerCmd = RacerId
+  ariaCmd (NewRacerCmd racer) = newRacer racer
+  toArCommand = NewRacerCmd'
+
+instance AriaCommand DelRacerCmd where
+  ariaCmd (DelRacerCmd rid) = deleteRacer rid
+  toArCommand = DelRacerCmd'
+
+instance AriaCommand SelectBuildCmd where
+  ariaCmd (SelectBuildCmd rid sha) = selectBuild rid sha
+  toArCommand = SelectBuildCmd'
+
+instance AriaCommand UploadCodeCmd where
+  ariaCmd (UploadCodeCmd rid path buildName) = uploadCode rid path buildName
+  toArCommand = UploadCodeCmd'
+
+instance AriaCommand GetCurRaceDataCmd where
+  type AriaCmdResult GetCurRaceDataCmd = Maybe RaceHistoryData
+  ariaCmd GetCurRaceDataCmd = use curRaceHistData
+  toArCommand = GetCurRaceDataCmd'
+
+instance FromJSON ArCommand where
+  parseJSON v = (StartRaceCmd' <$> parseJSON v)
+    <|> (StopRaceCmd' <$> parseJSON v)
+    <|> (SetupRaceCmd' <$> parseJSON v)
+    <|> (IsRacingCmd' <$> parseJSON v)
+    <|> (ScriptLogCmd' <$> parseJSON v)
+    <|> (NewRacerCmd' <$> parseJSON v)
+    <|> (DelRacerCmd' <$> parseJSON v)
+    <|> (SelectBuildCmd' <$> parseJSON v)
+    <|> (UploadCodeCmd' <$> parseJSON v)
+    <|> (GetCurRaceDataCmd' <$> parseJSON v)
+  parseJSON _ = mempty
 
 runAriaCommand
-  :: (AriaCommand a, FromJSON (AriaCmdResult a), ToJSON a, MonadIO m, MonadMask m)
-  => a -> AriaServerApp m (Maybe (AriaCmdResult a))
+  :: (AriaCommand a
+     ,FromJSON (AriaCmdResult a)
+     ,ToJSON a
+     ,MonadIO m
+     ,MonadMask m
+     ,MonadThrow m
+     )
+  => a -> AriaServerApp m (AriaCmdResult a)
 runAriaCommand cmd = do
   config <- ask
-  d <-
-    connect (config ^. ariaServerAddress) (config ^. ariaServerPort) $
+  connect (config ^. ariaServerAddress) (config ^. ariaServerPort) $
     \(socket, _) -> do
       sendLazy socket $ encode cmd
-      recv socket (config ^. maxReceive)
-  return $ d >>= decodeStrict
-
-serveAriaCommand :: (MonadIO m, MonadMask m, MonadThrow m) => TVar RepoAppState -> AriaServerApp m ()
-serveAriaCommand stateRef = do
+      receiveAndDecode socket (config^.maxReceive)
+      
+serveAriaCommands
+  :: (MonadIO m, MonadMask m, MonadThrow m)
+  => TVar RepoAppState -> AriaServerApp m ()
+serveAriaCommands stateRef = do
   config <- ask
   serve "*" (config ^. ariaServerPort) $
     \(socket, _) -> do
-      d <- recv socket (config ^. maxReceive)
-      cmd <- maybe (throwM BadCmdCall) (return . fromJust) (d >>= decodeStrict) 
+      cmd <- receiveAndDecode socket (config ^. maxReceive)
       result <- withAriaState stateRef $ runArCommand cmd
-      sendLazy socket result
-  
-withAriaState :: (MonadIO m, MonadCatch m, MonadThrow m) => TVar RepoAppState -> RepoApp m a -> m a
-withAriaState stateRef app = do 
+      sendLazy socket . encode $ result
+
+receiveAndDecode :: (MonadThrow m, MonadIO m, FromJSON a) => Socket -> Int -> m a
+receiveAndDecode s max = do
+  a <- recv s max
+  b <- maybe (throwM $ TCPReceiveFailed) return $ a
+  either (throwM . DecodeError) return $ eitherDecodeStrict b
+
+withAriaState
+  :: (MonadIO m, MonadCatch m, MonadThrow m)
+  => TVar RepoAppState -> RepoApp m a -> m a
+withAriaState stateRef app = do
   state <- liftIO . atomically $ readTVar stateRef
-  (r,s) <- flip runStateT state app
-  liftIO . atomically $ writeTVar stateRef s 
+  (r, s) <- flip runStateT state app
+  liftIO . atomically $ writeTVar stateRef s
   return r
 
-runArCommand :: (MonadIO m, MonadCatch m, MonadThrow m) => ArCommand -> RepoApp m BSL.ByteString
-runArCommand (StartRaceCmd' x) = encode <$> (ariaCmd x)
-runArCommand _ = return mempty
+runArCommand
+  :: (MonadIO m, MonadCatch m, MonadThrow m)
+  => ArCommand -> RepoApp m ToJSONResult 
+runArCommand (StartRaceCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (StopRaceCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (SetupRaceCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (IsRacingCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (ScriptLogCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (NewRacerCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (DelRacerCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (SelectBuildCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (UploadCodeCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (GetCurRaceDataCmd' x) = ToJSONResult <$> ariaCmd x

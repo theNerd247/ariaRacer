@@ -50,7 +50,7 @@ data ScriptLogData = ScriptLogData
   , _stdErr :: String
   , _stdOut :: String
   , _exitCode :: ReturnCode
-  } deriving (Eq, Ord, Show, Read, Data, Typeable)
+  } deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data ScriptError =
   ScriptError ScriptLogData

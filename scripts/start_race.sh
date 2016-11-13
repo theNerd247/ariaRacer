@@ -28,4 +28,5 @@ for i in $(seq 1 $nbots); do
 	pidF="$pidFile"_$i
 	echo "pid $pid"
 	echo $pid >> $pidF
+	disown $pid
 done

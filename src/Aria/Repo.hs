@@ -19,8 +19,7 @@ module Aria.Repo
   , getRacers
   , withRacer
   , isRacing
-  , getRacerBuild
-  , getRacerBuilds
+  , defaultRepo
   , AS.scriptBasePath
   , AS.scriptStartTime
   , AS.scriptEndTime
@@ -56,9 +55,11 @@ import qualified Aria.Scripts as AS
 import qualified Data.List as DL
 
 data RepoAppState = RepoAppState 
-  { getAcid :: AcidState RepoDBState
+  { _raceAcid :: AcidState RepoDBState
   , _curRaceHistData :: Maybe RaceHistoryData
   }
+
+makeLenses ''RepoAppState
 
 type RepoApp = StateT RepoAppState
 
@@ -74,13 +75,16 @@ data InvalidBuildError = InvalidBuildError
 
 instance Exception InvalidBuildError
 
-makeLenses ''RepoAppState
+data NoSelectedBuildError = NoSelectedBuildError RacerId
+  deriving (Eq,Ord,Show,Read,Data,Typeable)
+
+instance Exception NoSelectedBuildError
 
 newRacer
   :: (Monad m, MonadCatch m, MonadIO m, MonadThrow m)
   => Racer -> RepoApp m RacerId
 newRacer racer = do 
-     acid <- getAcid <$> get
+     acid <- use raceAcid
      rid <- update' acid (InsertRacer racer)
      runScript (AS.CreateRacer rid)
      return rid 
@@ -91,7 +95,7 @@ undoNewUser
   :: (Monad m, MonadIO m, MonadThrow m)
   => RepoApp m ()
 undoNewUser = do
-  acid <- getAcid <$> get
+  acid <- use raceAcid
   (RacerId rid) <- query' acid (GetNextRacerId)
   update' acid (RemoveRacer . RacerId $ rid - 1)
 
@@ -99,7 +103,7 @@ deleteRacer
   :: (MonadIO m, MonadThrow m)
   => RacerId -> RepoApp m ()
 deleteRacer rid = do
-  acid <- getAcid <$> get
+  acid <- use raceAcid
   update' acid (RemoveRacer rid)
   runScript (AS.RemoveRacer rid)
   return ()
@@ -110,7 +114,7 @@ uploadCode
 uploadCode rid file bName =
   withRacer rid $
   \racer -> do
-    acid <- getAcid <$> get
+    acid <- use raceAcid
     bPath <- AS._scriptCwd <$> query' acid (GetScriptConfig)
     let outFile = bPath ++ "/racer_" ++ (show $ _unRacerId rid) ++ "_commit.out"
     runScripts $
@@ -120,59 +124,43 @@ uploadCode rid file bName =
       ]
     bRev <- liftIO $ DL.takeWhile (not . isSpace) <$> readFile outFile
     dt <- liftIO $ getCurrentTime
-    let newBuild =
-          RacerBuild
-          { _buildName = bName
-          , _buildRev = bRev
-          , _buildDate = dt
-          }
-    update' acid . UpdateRacer $
-      (racer & selectedBuild .~ 0 & racerBuilds %~ (newBuild :))
-    return ()
-
-withRacer
-  :: (Monad m, MonadIO m, MonadThrow m)
-  => RacerId -> (Racer -> RepoApp m a) -> RepoApp m a
-withRacer rid act = do
-  acid <- getAcid <$> get
-  racer <- query' acid $ GetRacerById rid
-  case racer of
-    Nothing -> throwM $ RacerNotFound rid
-    Just r -> act r
+    update' acid . UpdateRacer $ (racer & selectedBuild .~ Just bName)
+    update' acid . AddRacerBuild $ RacerBuild
+        { _buildName = bName
+        , _buildRev = bRev
+        , _buildDate = dt
+        , _buildRacerId = rid
+        }
 
 getScriptLogs
   :: (MonadIO m, Monad m)
   => RepoApp m AS.ScriptLog
-getScriptLogs = getAcid <$> get >>= \acid -> query' acid GetScriptLog
+getScriptLogs = use raceAcid >>= \acid -> query' acid GetScriptLog
 
 selectBuild
   :: (MonadIO m, Monad m, MonadThrow m)
   => RacerId -> SHA -> RepoApp m ()
-selectBuild rid sha = do
-  acid <- getAcid <$> get
-  withRacer rid $
-    \racer -> do
-      runScript $ AS.BuildRacer rid sha
-      update'
-        acid
-        (UpdateRacer $
-         racer & selectedBuild .~ setSelBuild (racer ^. racerBuilds))
-      return ()
-  where
-    setSelBuild = maybe 0 toInteger . DL.findIndex ((== sha) . _buildRev)
+selectBuild rid sha = withRacer rid $ \racer -> do
+  acid <- use raceAcid
+  runScript $ AS.BuildRacer rid sha
+  bName <- fmap _buildName <$> (query' acid $ GetRacerBuildBySHA rid sha) 
+  update' acid (UpdateRacer $ racer & selectedBuild .~ bName)
+  return ()
 
 setupRace :: (MonadIO m, MonadThrow m, Monad m) => [RacerId] -> RepoApp m ()
-setupRace racers = whenNotRacing $ do
-    builds <- getRacerBuilds racers
-    raceHist <- makeRaceHistory builds
-    curRaceHistData .= Just raceHist
-    return ()
+setupRace rids = whenNotRacing $ do
+  builds <- getRacers rids >>= flip forM getRacerBuild
+  raceHist <- makeRaceHistory builds
+  curRaceHistData .= Just raceHist
+  return ()
+  where
+    getRacerBuild racer = guardMaybe (NoSelectedBuildError $ racer^.racerId) (racer^.selectedBuild) $ \bName -> return (racer^.racerId,bName)
 
 startRace :: (MonadThrow m, MonadIO m) => RepoApp m ()
 startRace = whenRacing () $ \hd -> do
-  newClocks <-  startClocks $ hd ^. histRaceData . rdTime
-  curRaceHistData .= Just (hd & histRaceData . rdTime .~ newClocks)
-  runScript . AS.StartRace $ hd ^. histRaceData . rdRIds 
+  newHd <- hd & histRaceData . each . rdTime %%~ const startClock
+  curRaceHistData .= Just newHd
+  runScript . AS.StartRace $ _rdRId <$> newHd ^. histRaceData 
   return ()
 
 stopRace :: (MonadIO m, MonadThrow m, Monad m) => StopCommand -> RepoApp m ()
@@ -181,7 +169,7 @@ stopRace cmd = whenRacing () $ \raceHist -> do
   newHist <- stopRaceClocks cmd raceHist
   curRaceHistData .= Just newHist
   when (allStopped newHist) $ do 
-    acid <- getAcid <$> get
+    acid <- use raceAcid
     update' acid . AddRaceHistory $ newHist
     curRaceHistData .= Nothing
   where
@@ -190,28 +178,31 @@ stopRace cmd = whenRacing () $ \raceHist -> do
     toLaneNumbers (StopLane i) = [toInteger i]
     
 whenRacing :: (Monad m) => a -> (RaceHistoryData -> RepoApp m a) -> RepoApp m a
-whenRacing x f = _curRaceHistData <$> get >>= maybe (return x) f
+whenRacing x f = use curRaceHistData >>= maybe (return x) f
 
 whenNotRacing :: (Monad m) => RepoApp m () -> RepoApp m ()
-whenNotRacing f = _curRaceHistData <$> get >>= maybe f (const $ return ())
+whenNotRacing f = use curRaceHistData >>= maybe f (const $ return ())
 
 isRacing :: (Monad m) => RepoApp m Bool
-isRacing = _curRaceHistData <$> get >>= maybe (return False) (return . not . allStopped)
+isRacing = use curRaceHistData >>= maybe (return False) (return . not . allStopped)
 
 getRacers :: (MonadIO m, MonadThrow m) => [RacerId] -> RepoApp m [Racer]
 getRacers rids = do
-  acid <- getAcid <$> get
+  acid <- use raceAcid
   forM rids $ \rid -> 
     do racer <- query' acid $ GetRacerById rid
        maybe (throwM $ RacerNotFound rid) (return) racer
 
-getRacerBuilds :: (MonadIO m, MonadThrow m) => [RacerId] -> RepoApp m [(RacerId,Text)]
-getRacerBuilds rids = forM rids getRacerBuild
+withRacer
+  :: (Monad m, MonadIO m, MonadThrow m)
+  => RacerId -> (Racer -> RepoApp m a) -> RepoApp m a
+withRacer rid act = do
+  acid <- use raceAcid
+  racer <- query' acid $ GetRacerById rid
+  guardMaybe (RacerNotFound rid) racer act
 
-getRacerBuild :: (MonadIO m, MonadThrow m) => RacerId -> RepoApp m (RacerId,Text)
-getRacerBuild rid =  withRacer rid $ \racer -> do
-  let bname = racer ^? racerBuilds . ix (fromInteger $ racer ^. selectedBuild) . buildName
-  maybe (throwM $ InvalidBuildError rid) (\bn -> return (rid,bn)) $ bname
+guardMaybe :: (Exception e, MonadThrow m) => e -> Maybe a -> (a -> m b) -> m b
+guardMaybe e x f = maybe (throwM e) f x
 
 runScript
   :: (MonadIO m, MonadThrow m, AS.Script a)
@@ -223,8 +214,21 @@ runScripts
   :: (MonadIO m, MonadThrow m, AS.Script a, Traversable t)
   => t a -> RepoApp m [String]
 runScripts cmds = do
-  acid <- getAcid <$> get
+  acid <- use raceAcid
   config <- query' acid GetScriptConfig
   log <- AS.runScriptCommand config cmds
   update' acid (AddScriptLog log)
   return $ AS._stdOut <$> log
+
+defaultRepo = RepoDBState
+  { _racerDB = emptyRacerDB
+  , _nextRacerId = RacerId 1
+  , _scriptLog = []
+  , _raceHistory = emptyRaceHistoryDB
+  , _racerBuilds = emptyBuildDB
+  , _scriptConfig =
+    AS.ScriptConfig
+    { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
+    , AS._scriptCwd = "/tmp/arrun"
+    }
+  } 

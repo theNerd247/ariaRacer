@@ -152,19 +152,6 @@ uploadCodeHandle r d =
        True -> returnPage $  buildExistsPage r
        _ -> returnPage $ buildErrorPage r log
 
-initRepo :: RepoDBState
-initRepo = RepoDBState
-  { _racerDB = emptyRacerDB
-  , _nextRacerId = RacerId 1
-  , _scriptLog = []
-  , _raceHistory = emptyRaceHistoryDB
-  , _scriptConfig =
-    AS.ScriptConfig
-    { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
-    , AS._scriptCwd = "/tmp/arrun"
-    }
-  } 
-
 instance Show RepoAppState where
   show = show . view curRaceHistData
   

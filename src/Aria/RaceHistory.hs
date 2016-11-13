@@ -9,9 +9,9 @@ import Control.Lens
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
 import Control.Monad
-import Data.Time (UTCTime,getCurrentTime, diffUTCTime)
+import Data.Time (UTCTime, getCurrentTime, diffUTCTime)
 import Data.Data
-import Data.Text hiding (length,replicate,take)
+import Data.Text hiding (length, replicate, take)
 import Control.Monad.IO.Class
 import Data.SafeCopy
 import GHC.Generics hiding (to)
@@ -21,7 +21,7 @@ data RaceClock
   = Finished RaceTime
   | Running UTCTime
   | Aborted
-  deriving (Eq, Ord, Show, Data, Typeable)
+  deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
 type RaceClocks = [RaceClock]
 
@@ -29,18 +29,18 @@ data StopCommand
   = StopLane Int
   | Abort
   | AbortLane Int
-  deriving (Show, Read, Ord, Eq, Data, Typeable)
+  deriving (Show, Read, Ord, Eq, Data, Typeable, Generic)
 
 data RaceData = RaceData
-  { _rdRIds :: [RacerId]
-  , _rdTime :: RaceClocks
-  , _rdBuildNames :: [Text]
+  { _rdRId :: RacerId
+  , _rdTime :: RaceClock
+  , _rdBuildName :: Text
   } deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 data RaceHistoryData = RaceHistoryData
-  { _histRaceData :: RaceData
+  { _histRaceData :: [RaceData]
   , _histRaceDate :: UTCTime
-  } deriving (Eq, Ord, Show, Data, Typeable)
+  } deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
 type RaceHistory = [RaceHistoryData]
 
@@ -55,56 +55,56 @@ $(deriveSafeCopy 0 'base ''RaceClock)
 $(deriveSafeCopy 2 'base ''RaceData)
 
 raceLanes :: Getter RaceHistoryData [Int]
-raceLanes = to $ \rd -> [1 .. length(rd ^. histRaceData . rdRIds)]
+raceLanes = to $ \rd -> [1 .. length (rd ^. histRaceData)]
 
-makeRaceHistory :: (MonadIO m) => [(RacerId,Text)] -> m RaceHistoryData
+makeRaceHistory
+  :: (MonadIO m)
+  => [(RacerId, Text)] -> m RaceHistoryData
 makeRaceHistory racers = do
   rd <- newRaceData racers
   now <- liftIO $ getCurrentTime
-  return $ RaceHistoryData 
-    {_histRaceData = rd 
-    ,_histRaceDate = now
+  return $
+    RaceHistoryData
+    { _histRaceData = rd
+    , _histRaceDate = now
     }
 
-stopRaceClocks :: (MonadIO m) => StopCommand -> RaceHistoryData -> m RaceHistoryData
-stopRaceClocks cmd hist = do 
-  clks <- stopClocks cmd (hist ^. histRaceData . rdTime)
-  return $ hist & histRaceData . rdTime .~ clks
-
--- | Stop the clocks with the given command. If a race is stopping then compute
--- the amount of time the race took
-stopClocks
+stopRaceClocks
   :: (MonadIO m)
-  => StopCommand -> RaceClocks -> m RaceClocks
-stopClocks Abort rc = return $ const Aborted <$> rc 
-stopClocks (AbortLane i) rc = return $ rc & ix (i-1) .~ Aborted
-stopClocks (StopLane i) rc = do 
+  => StopCommand -> RaceHistoryData -> m RaceHistoryData
+stopRaceClocks (Abort) hist = return $ hist & histRaceData . each . rdTime .~ Aborted
+stopRaceClocks (AbortLane i) hist =
+  return $ hist & histRaceData . ix (i - 1) . rdTime .~ Aborted
+stopRaceClocks (StopLane i) hist = do
   now <- liftIO getCurrentTime
-  return $ rc & ix (i-1) %~ setClock (Finished . floor . toRational . diffUTCTime now)
+  return $ hist & histRaceData . ix (i - 1) . rdTime %~
+    setClock (Finished . floor . toRational . diffUTCTime now)
 
 setClock :: (UTCTime -> RaceClock) -> RaceClock -> RaceClock
 setClock f (Running t) = f t
 setClock _ clk = clk
 
-startClocks
+startClock
   :: MonadIO m
-  => RaceClocks -> m RaceClocks
-startClocks clks = liftIO $ forM clks (\_ -> getCurrentTime >>= return . Running)
+  => m RaceClock
+startClock = liftIO $ getCurrentTime >>= return . Running
 
-newRaceData :: (MonadIO m) => [(RacerId,Text)] -> m RaceData
+newRaceData
+  :: (MonadIO m)
+  => [(RacerId, Text)] -> m [RaceData]
 newRaceData [] = error "Bad call to newRaceData"
-newRaceData rs = do
-  return $ RaceData
-    { _rdRIds = fst rids
-    , _rdTime = replicate (length . fst $ rids) Aborted
-    , _rdBuildNames = snd rids
-    }
+newRaceData rs = return . fmap mkRacerData . take 2 $ rs
   where
-    rids = unzip $ take 2 rs
+    mkRacerData (rid, bname) =
+      RaceData
+      { _rdRId = rid
+      , _rdTime = Aborted
+      , _rdBuildName = bname
+      }
 
 allStopped :: RaceHistoryData -> Bool
-allStopped hd = getAll . mconcat $ (All . isStopped) <$> hd ^. histRaceData . rdTime
+allStopped hd = getAll $ hd ^. histRaceData . each . rdTime . (to isStopped)
   where
-    isStopped Aborted = True
-    isStopped (Finished _) = True
-    isStopped _ = False
+    isStopped Aborted = All True
+    isStopped (Finished _) = All True
+    isStopped _ = All False

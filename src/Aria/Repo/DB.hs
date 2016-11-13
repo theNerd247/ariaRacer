@@ -23,17 +23,20 @@ type RepoDB = IxSet Racer
 
 type RaceHistoryDB = IxSet RaceHistoryData
 
+type RacerBuildDB = IxSet RacerBuild
+
 data RepoDBState = RepoDBState
   { _racerDB :: RepoDB
   , _nextRacerId :: RacerId
   , _scriptLog :: AS.ScriptLog
   , _scriptConfig :: AS.ScriptConfig
   , _raceHistory :: RaceHistoryDB
+  , _racerBuilds :: RacerBuildDB
   } deriving (Eq, Ord, Show, Data, Typeable)
 
 makeLenses ''RepoDBState
 
-$(deriveSafeCopy 4 'base ''RepoDBState)
+$(deriveSafeCopy 5 'base ''RepoDBState)
 
 instance IxSet.Indexable Racer where
   empty =
@@ -44,10 +47,17 @@ instance IxSet.Indexable Racer where
 
 instance IxSet.Indexable RaceHistoryData where
   empty = ixSet 
-    [ ixFun $ _rdRIds . _histRaceData
-    , ixFun $ (:[]) . _rdTime . _histRaceData
+    [ ixFun $ fmap _rdRId . _histRaceData
+    , ixFun $ (:[]) . fmap _rdTime . _histRaceData
     , ixFun $ (:[]) . _histRaceDate
-    , ixFun $ (:[]) . _rdBuildNames . _histRaceData
+    , ixFun $ (:[]) . fmap _rdBuildName . _histRaceData
+    ]
+
+instance IxSet.Indexable RacerBuild where
+  empty = ixSet 
+    [ ixFun $ (:[]) . _buildRacerId
+    , ixFun $ (:[]) . _buildRev
+    , ixFun $ (:[]) . _buildName
     ]
       
 emptyRacerDB :: RepoDB
@@ -55,6 +65,9 @@ emptyRacerDB = IxSet.empty
 
 emptyRaceHistoryDB :: RaceHistoryDB
 emptyRaceHistoryDB = IxSet.empty
+
+emptyBuildDB :: RacerBuildDB
+emptyBuildDB = IxSet.empty
 
 insertRacer :: Racer -> Update RepoDBState RacerId
 insertRacer r = do
@@ -108,8 +121,17 @@ addRaceHistory d = modify $ raceHistory %~ IxSet.insert d
 getRaceHistByRId :: RacerId -> Query RepoDBState RaceHistory
 getRaceHistByRId rid = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ rid
 
-{-getRaceHistDateRange :: UTCTime -> UTCTime -> Query RepoDBState RaceHistory-}
-{-getRaceHistDateRange (dt1,dt2) = (_raceHistory <$> ask) >>= return . IxSet.toList . getRange dt1 dt2-}
+addRacerBuild :: RacerBuild  -> Update RepoDBState ()
+addRacerBuild rbuild = modify (racerBuilds %~ IxSet.insert rbuild)
+
+getRacerBuildsByRId :: RacerId -> Query RepoDBState [RacerBuild]
+getRacerBuildsByRId rid = (_racerBuilds <$> ask) >>= return . IxSet.toList . getEQ rid
+
+getRacerBuildByName :: RacerId -> BuildName -> Query RepoDBState (Maybe RacerBuild)
+getRacerBuildByName rid bname = (_racerBuilds <$> ask) >>= return . IxSet.getOne . IxSet.getEQ bname . IxSet.getEQ rid
+
+getRacerBuildBySHA :: RacerId -> SHA -> Query RepoDBState (Maybe RacerBuild)
+getRacerBuildBySHA rid sha = (_racerBuilds <$> ask) >>= return . IxSet.getOne . IxSet.getEQ sha . IxSet.getEQ rid
 
 $(makeAcidic
     ''RepoDBState
@@ -124,6 +146,9 @@ $(makeAcidic
     , 'getRacers
     , 'getNextRacerId
     , 'addRaceHistory
+    , 'addRacerBuild
     , 'getRaceHistByRId
-    {-, 'getRaceHistDateRange-}
+    , 'getRacerBuildsByRId
+    , 'getRacerBuildByName
+    , 'getRacerBuildBySHA
     ])

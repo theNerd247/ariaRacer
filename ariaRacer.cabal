@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Aria
                      , Aria.Repo.DB
+                     , Aria.Commands
                      , Aria.Types
                      , Aria.Repo
                      , Data.Acid.Run
@@ -47,47 +48,42 @@ library
   default-language:    Haskell2010
 
 --executable arweb
-  --hs-source-dirs:      arweb/app
+  --hs-source-dirs:     arrun/app
   --main-is:             Main.hs
   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   --build-depends:       base
+                     --, acid-state
                      --, ariaRacer
-                     --, blaze-html
                      --, blaze-bootstrap
-                     --, text
-                     --, optparse-applicative
+                     --, blaze-html
+                     --, blaze-markup
+                     --, cereal
+                     --, exceptions
+                     --, happstack-server
                      --, lens
-                     --, time
+                     --, mtl
                      --, reform
                      --, reform-blaze
+                     --, reform-happstack
+                     --, safecopy
+                     --, text
+                     --, time
+                     --, transformers
+                     --, stm
+                     --, web-routes
+                     --, web-routes-happstack
+
   --default-language:    Haskell2010
 
 executable arrun
-  hs-source-dirs:     arrun/app
+  hs-source-dirs:      arrun
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , acid-state
                      , ariaRacer
-                     , blaze-bootstrap
-                     , blaze-html
-                     , blaze-markup
-                     , cereal
-                     , exceptions
-                     , happstack-server
-                     , lens
-                     , mtl
-                     , reform
-                     , reform-blaze
-                     , reform-happstack
-                     , safecopy
-                     , text
-                     , time
-                     , transformers
                      , stm
-                     , web-routes
-                     , web-routes-happstack
-
+                     , array
+                     , transformers
   default-language:    Haskell2010
 
 executable artmp
@@ -97,8 +93,12 @@ executable artmp
   build-depends:       base
                      , ariaRacer
                      , stm
+                     , bytestring
+                     , aeson
                      , array
+                     , transformers
   default-language:    Haskell2010
+
 
 source-repository head
   type:     git
