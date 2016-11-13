@@ -110,7 +110,7 @@ deleteRacer rid = do
 
 uploadCode
   :: (MonadIO m, MonadThrow m)
-  => RacerId -> FilePath -> Text -> RepoApp m ()
+  => RacerId -> FilePath -> Text -> RepoApp m SHA
 uploadCode rid file bName =
   withRacer rid $
   \racer -> do
@@ -131,6 +131,7 @@ uploadCode rid file bName =
         , _buildDate = dt
         , _buildRacerId = rid
         }
+    return bRev
 
 getScriptLogs
   :: (MonadIO m, Monad m)

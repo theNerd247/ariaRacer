@@ -144,6 +144,7 @@ instance AriaCommand SelectBuildCmd where
   toArCommand = SelectBuildCmd'
 
 instance AriaCommand UploadCodeCmd where
+  type AriaCmdResult UploadCodeCmd = SHA
   ariaCmd (UploadCodeCmd rid path buildName) = uploadCode rid path buildName
   toArCommand = UploadCodeCmd'
 
@@ -163,7 +164,6 @@ instance FromJSON ArCommand where
     <|> (SelectBuildCmd' <$> parseJSON v)
     <|> (UploadCodeCmd' <$> parseJSON v)
     <|> (GetCurRaceDataCmd' <$> parseJSON v)
-  parseJSON _ = mempty
 
 runAriaCommand
   :: (AriaCommand a
