@@ -34,7 +34,7 @@ import Control.Concurrent.STM.TQueue
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Reader
 import Control.Monad
-import Control.Lens
+import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Control.Monad.Catch
 import Control.Applicative ((<|>))
@@ -42,7 +42,7 @@ import Data.Maybe (fromJust)
 import Data.Acid.Run
 import Data.Data
 import Data.Aeson
-       (FromJSON, ToJSON, encode, eitherDecodeStrict, toJSON, parseJSON)
+import Data.Aeson.Types (Parser)
 import GHC.Generics
 import Network.Simple.TCP
 import Data.SafeCopy
@@ -83,6 +83,8 @@ data ArCommand
   | GetCurRaceDataCmd' GetCurRaceDataCmd
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
+data AriaException = forall a. (Exception a, ToJSON a, FromJSON a) => AriaException a
+
 $(deriveSafeCopy 0 'base ''ArCommand)
 
 data ToJSONResult =
@@ -100,10 +102,13 @@ class (ToJSON a, FromJSON a, ToJSON (AriaCmdResult a)) =>
     => a -> RepoApp m (AriaCmdResult a)
   toArCommand :: a -> ArCommand
 
-
 instance Exception TCPReceiveFailed
 
 instance Exception DecodeError
+
+instance ToJSON AS.ScriptError
+
+instance FromJSON AS.ScriptError
 
 instance ToJSON ToJSONResult where
   toJSON (ToJSONResult a) = toJSON a
@@ -165,6 +170,12 @@ instance FromJSON ArCommand where
     <|> (UploadCodeCmd' <$> parseJSON v)
     <|> (GetCurRaceDataCmd' <$> parseJSON v)
 
+instance FromJSON AriaException where
+  parseJSON v = AriaException <$> (parseJSON v :: Parser AS.ScriptError) 
+
+instance ToJSON AriaException where
+  toJSON (AriaException e) = object ["AriaException".=e]
+
 runAriaCommand
   :: (AriaCommand a
      ,FromJSON (AriaCmdResult a)
@@ -180,9 +191,15 @@ runAriaCommand cmd = do
     \(socket, _) -> do
       sendLazy socket $ encode cmd
       receiveAndDecode socket (config^.maxReceive)
+  where
+    receiveWithError :: (FromJSON a, MonadThrow m, MonadIO m) => Socket -> Int -> m (Either AriaException a)
+    receiveWithError = receiveAndDecode
+    throwAriaM :: (MonadThrow m) => AriaException -> m a
+    throwAriaM (AriaException e) = throwM e
+
       
 serveAriaCommands
-  :: (MonadIO m, MonadMask m, MonadThrow m)
+  :: (MonadIO m, MonadMask m, MonadThrow m, MonadCatch m)
   => TVar RepoAppState -> AriaServerApp m ()
 serveAriaCommands stateRef = do
   config <- ask
