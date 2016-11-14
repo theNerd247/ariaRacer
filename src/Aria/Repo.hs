@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Aria.Repo
   ( newRacer
@@ -13,13 +14,14 @@ module Aria.Repo
   , setupRace
   , startRace
   , stopRace
-  , curRaceHistData
   , whenRacing
   , whenNotRacing
   , getRacers
   , withRacer
   , isRacing
   , defaultRepo
+  , raceAcid
+  , curRaceHistData
   , AS.scriptBasePath
   , AS.scriptStartTime
   , AS.scriptEndTime
@@ -195,8 +197,8 @@ getRacers rids = do
        maybe (throwM $ RacerNotFound rid) (return) racer
 
 withRacer
-  :: (Monad m, MonadIO m, MonadThrow m)
-  => RacerId -> (Racer -> RepoApp m a) -> RepoApp m a
+  :: (Monad m, MonadIO m, MonadThrow m, MonadState RepoAppState m)
+  => RacerId -> (Racer -> m a) -> m a
 withRacer rid act = do
   acid <- use raceAcid
   racer <- query' acid $ GetRacerById rid

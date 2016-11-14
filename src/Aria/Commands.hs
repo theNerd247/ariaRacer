@@ -33,23 +33,11 @@ data SetupRaceCmd =
 
 $(deriveSafeCopy 0 'base ''SetupRaceCmd)
 
-data IsRacingCmd =
-  IsRacingCmd
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-$(deriveSafeCopy 0 'base ''IsRacingCmd)
-
-data ScriptLogCmd =
-  ScriptLogCmd
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-$(deriveSafeCopy 0 'base ''ScriptLogCmd)
-
 data NewRacerCmd =
-  NewRacerCmd Racer
+  NewRacerCmd Text
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-$(deriveSafeCopy 0 'base ''NewRacerCmd)
+$(deriveSafeCopy 1 'base ''NewRacerCmd)
 
 data DelRacerCmd =
   DelRacerCmd RacerId
@@ -70,13 +58,6 @@ data UploadCodeCmd =
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 $(deriveSafeCopy 0 'base ''UploadCodeCmd)
-
-data GetCurRaceDataCmd =
-  GetCurRaceDataCmd 
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-$(deriveSafeCopy 0 'base ''GetCurRaceDataCmd)
-
 
 instance ToJSON RacerId
 
@@ -102,14 +83,6 @@ instance ToJSON SetupRaceCmd
 
 instance FromJSON SetupRaceCmd
 
-instance ToJSON IsRacingCmd
-
-instance FromJSON IsRacingCmd
-
-instance ToJSON ScriptLogCmd
-
-instance FromJSON ScriptLogCmd
-
 instance ToJSON NewRacerCmd 
 
 instance FromJSON NewRacerCmd
@@ -125,23 +98,3 @@ instance FromJSON SelectBuildCmd
 instance ToJSON UploadCodeCmd
 
 instance FromJSON UploadCodeCmd
-
-instance ToJSON GetCurRaceDataCmd
-
-instance FromJSON GetCurRaceDataCmd
-
-instance ToJSON AS.ScriptLogData
-
-instance FromJSON AS.ScriptLogData
-
-instance ToJSON RaceClock
-
-instance FromJSON RaceClock
-
-instance ToJSON RaceData
-
-instance FromJSON RaceData
-
-instance ToJSON RaceHistoryData  
-
-instance FromJSON RaceHistoryData

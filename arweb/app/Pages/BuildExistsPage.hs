@@ -23,8 +23,9 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
-buildExistsPage :: RacerId -> H.Html
-buildExistsPage rid = appTemplate "Build Exists" $ do
-  BH.jumbotron
-    (H.string "Build Already Exists and Is Already Selected")
-    (racerPageButton rid "Go back")
+buildExistsPage :: RacerId -> AriaWebApp H.Html
+buildExistsPage rid =
+  appTemplate "Build Exists" $
+  do BH.jumbotron
+       (H.string "Build Already Exists and Is Already Selected")
+       (racerPageButton rid "Go back")

@@ -66,7 +66,7 @@ genNewRacerForm = mkInline $
   (A.placeholder "New Racer Name" <> A.class_ "form-control")
 
 genUploadCodeForm :: AriaForm m UploadCodeFormData
-genUploadCodeForm = fieldset $ bootstrapError ++> (submitButton *> uploadForm)
+genUploadCodeForm = mkInline . fieldset $ bootstrapError ++> (submitButton *> uploadForm)
   where
     uploadForm = pure UploadCodeFormData <*> buildName <*> buildFile
     buildFile =
@@ -86,7 +86,7 @@ genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRac
       <*> (mkFormGroup $ label ("Lane 1" :: String) ++> selRacer) 
       <*> (mkFormGroup $ label ("Lane 2" :: String) ++> selRacer) 
     selRacer = select (noRacerLabel:selLabels) defaultRacer `setAttr` (A.class_ "form-control")
-    selLabels = fmap (\r -> (Just $ r ^. racerId, racerLabel r)) $ DL.filter (view $ racerBuilds . to length . to (/=0)) racers
+    selLabels = fmap (\r -> (Just $ r ^. racerId, racerLabel r)) racers
     noRacerLabel = (Nothing,"No Racer Selected")
     racerLabel r = (H.string $ r ^. racerId . unRacerId. to show) <> " - " <> (H.text $ r ^. racerName)
     defaultRacer = (==Nothing)

@@ -60,12 +60,12 @@ instance H.ToMarkup AS.ScriptLogData where
 racerPageButton :: RacerId -> String -> H.Html
 racerPageButton rid msg =
   H.a ! A.class_ "btn btn-success btn-large" !
-  A.href (H.toValue . toPathInfo . RcrRoute $ RacerRoute rid Nothing) $
+  A.href (H.toValue $ racerHomeRoute rid) $
   H.string msg
 
-appTemplate :: Text -> H.Html -> H.Html
+appTemplate :: Text -> H.Html -> AriaWebApp H.Html
 appTemplate title page =
-  H.docTypeHtml $
+  return . H.docTypeHtml $
   do H.head $
        do bootStrapMeta
           H.title $ H.text title
@@ -81,7 +81,8 @@ bootstrapJS = "/js/bootstrap.min.js"
 
 bootStrapMeta :: H.Html
 bootStrapMeta =
-  mconcat $ ((H.meta !) . mconcat) <$>
+  mconcat $
+  ((H.meta !) . mconcat) <$>
   [ [A.charset "utf-8"]
   , [A.httpEquiv "X-UA-compatible", A.content "IE=edge"]
   , [A.name "viewport", A.content "width=device-width, initial-scale=1"]

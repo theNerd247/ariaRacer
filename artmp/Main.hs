@@ -20,14 +20,14 @@ serveConfig =
 
 mkNewRacer :: AriaServerApp IO RacerId
 mkNewRacer = do 
-  liftIO . putStrLn . BSC.unpack . encode $ NewRacerCmd newRacer
-  runAriaCommand $ NewRacerCmd newRacer
-  where 
-    newRacer = Racer
-      { _racerId = RacerId 0
-      , _racerName = "Bob"
-      , _selectedBuild = Nothing
-      }
+  liftIO . putStrLn . BSC.unpack . encode $ NewRacerCmd "Bob"
+  runAriaCommand $ NewRacerCmd "Jo"
 
 main :: IO ()
-main = putStrLn . show =<< flip runReaderT serveConfig mkNewRacer
+main = flip runReaderT serveConfig $ do 
+    rid <- mkNewRacer
+    runAriaCommand $ DelRacerCmd rid
+    rid2 <- mkNewRacer
+    sha1 <- runAriaCommand $ UploadCodeCmd rid2 "/home/noah/src/temp/tst.cpp" "TestBuild1"
+    runAriaCommand $ UploadCodeCmd rid2 "/home/noah/src/temp/cpp/src/main.cpp" "TestBuild2"
+    runAriaCommand $ SelectBuildCmd rid2 sha1

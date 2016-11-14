@@ -24,7 +24,7 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
-runRacePage :: [Int] -> Bool -> [Text] -> H.Html
+runRacePage :: [Int] -> Bool -> [Text] -> AriaWebApp H.Html
 runRacePage lanes raceStarted rNames =
   appTemplate "Run Race" $
   do BH.row . BH.col "xs-12" $ H.h1 "Run Race!"
@@ -34,30 +34,30 @@ runRacePage lanes raceStarted rNames =
      BH.row $ 
        do BH.col "xs-4" mempty
           unless raceStarted $ BH.col "xs-4" startButton
-          when raceStarted $ BH.col "xs-4" $ stopButton "Abort Race" StopAllCmd
+          when raceStarted $ BH.col "xs-4" $ stopButton "Abort Race" Abort
           BH.col "xs-4" mempty
      when raceStarted laneStops
   where
     startButton =
       H.h1 $
-      H.a ! A.href (H.toValue . toPathInfo . AdmRoute $ Just  StartRaceCmd) !
+      H.a ! A.href (H.toValue . makeAdminRoute $ StartRace) !
       A.class_ "btn btn-lg btn-success" $
       H.string "Start"
     stopButton txt lnk =
       H.h1 $
-      H.a ! A.href (H.toValue . toPathInfo . AdmRoute . Just $ lnk) !
+      H.a ! A.href (H.toValue . makeAdminRoute . StopRace $ lnk) !
       A.class_ "btn btn-lg btn-danger" $
       H.string txt
     laneStops =
       mconcat $
       [ BH.row $
-          do BH.col "xs-6" $ stopButton ("Lane " ++ show i ++ " Finished") (StopLaneCmd i) 
-             BH.col "xs-6" $ stopButton ("Abort Lane " ++ show i) (AbortLaneCmd i)
+          do BH.col "xs-6" $ stopButton ("Lane " ++ show i ++ " Finished") (StopLane i) 
+             BH.col "xs-6" $ stopButton ("Abort Lane " ++ show i) (AbortLane i)
       | i <- [1 .. length lanes] ]
 
-raceNotSetupPage :: H.Html
+raceNotSetupPage :: AriaWebApp H.Html
 raceNotSetupPage = appTemplate "Race Not Setup" $
   BH.jumbotron "Race Not Setup!" $ 
     do H.string "No race has been setup yet!"
-       H.a ! A.href (H.toValue . toPathInfo $ AdmRoute Nothing) $ "Setup Race"
+       H.a ! A.href (H.toValue adminHomeRoute) $ "Setup Race"
 

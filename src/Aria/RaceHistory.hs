@@ -48,6 +48,9 @@ makeLenses ''RaceData
 
 makeLenses ''RaceHistoryData
 
+racerIds :: Getter RaceHistoryData [RacerId]
+racerIds = to $ \hd -> _rdRId <$> (hd ^. histRaceData)
+
 $(deriveSafeCopy 0 'base ''RaceHistoryData)
 
 $(deriveSafeCopy 0 'base ''RaceClock)

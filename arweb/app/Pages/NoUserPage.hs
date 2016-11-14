@@ -16,8 +16,9 @@ import Control.Monad
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Bootstrap as BH
 
-noUserPage :: RacerId -> H.Html
-noUserPage rid = appTemplate "404 No Such Page" $
+noUserPage :: RacerId -> AriaWebApp H.Html
+noUserPage rid =
+  appTemplate "404 No Such Page" $
   BH.jumbotron
     (H.string $ "Uh Oh! Error 404")
     (H.string $

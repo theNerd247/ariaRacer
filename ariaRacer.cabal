@@ -47,33 +47,34 @@ library
 
   default-language:    Haskell2010
 
---executable arweb
-  --hs-source-dirs:     arrun/app
-  --main-is:             Main.hs
-  --ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  --build-depends:       base
-                     --, acid-state
-                     --, ariaRacer
-                     --, blaze-bootstrap
-                     --, blaze-html
-                     --, blaze-markup
-                     --, cereal
-                     --, exceptions
-                     --, happstack-server
-                     --, lens
-                     --, mtl
-                     --, reform
-                     --, reform-blaze
-                     --, reform-happstack
-                     --, safecopy
-                     --, text
-                     --, time
-                     --, transformers
-                     --, stm
-                     --, web-routes
-                     --, web-routes-happstack
+executable arweb
+  hs-source-dirs:     arweb/app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , acid-state
+                     , ariaRacer
+                     , blaze-bootstrap
+                     , blaze-html
+                     , network
+                     , blaze-markup
+                     , cereal
+                     , exceptions
+                     , happstack-server
+                     , lens
+                     , mtl
+                     , reform
+                     , reform-blaze
+                     , reform-happstack
+                     , safecopy
+                     , text
+                     , time
+                     , transformers
+                     , stm
+                     , web-routes
+                     , web-routes-happstack
 
-  --default-language:    Haskell2010
+  default-language:    Haskell2010
 
 executable arrun
   hs-source-dirs:      arrun
@@ -82,7 +83,9 @@ executable arrun
   build-depends:       base
                      , ariaRacer
                      , stm
+                     , network
                      , array
+                     , acid-state
                      , transformers
   default-language:    Haskell2010
 

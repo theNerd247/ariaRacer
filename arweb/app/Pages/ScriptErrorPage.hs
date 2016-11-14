@@ -23,7 +23,7 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
-scriptErrorPage :: AS.ScriptLogData -> H.Html
+scriptErrorPage :: AS.ScriptLogData -> AriaWebApp H.Html
 scriptErrorPage log = appTemplate "Script Error" $
   BH.jumbotron (H.string "Uh oh! A script error occured") $
   do H.h3 . H.string $ "Let the prof know an error has occured."

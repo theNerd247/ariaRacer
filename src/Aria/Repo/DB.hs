@@ -48,9 +48,9 @@ instance IxSet.Indexable Racer where
 instance IxSet.Indexable RaceHistoryData where
   empty = ixSet 
     [ ixFun $ fmap _rdRId . _histRaceData
-    , ixFun $ (:[]) . fmap _rdTime . _histRaceData
+    , ixFun $ fmap _rdTime . _histRaceData
     , ixFun $ (:[]) . _histRaceDate
-    , ixFun $ (:[]) . fmap _rdBuildName . _histRaceData
+    , ixFun $ fmap _rdBuildName . _histRaceData
     ]
 
 instance IxSet.Indexable RacerBuild where
@@ -93,8 +93,8 @@ getRacerById = getRacerBy
 getRacerByName :: Text -> Query RepoDBState (Maybe Racer)
 getRacerByName = getRacerBy
 
-getRacers :: Query RepoDBState [Racer]
-getRacers = IxSet.toList . _racerDB <$> ask
+fetchRacers :: Query RepoDBState [Racer]
+fetchRacers = IxSet.toList . _racerDB <$> ask
 
 getRacerBy
   :: (Typeable k)
@@ -121,6 +121,9 @@ addRaceHistory d = modify $ raceHistory %~ IxSet.insert d
 getRaceHistByRId :: RacerId -> Query RepoDBState RaceHistory
 getRaceHistByRId rid = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ rid
 
+getRaceHistByName :: BuildName -> Query RepoDBState RaceHistory
+getRaceHistByName bname = (_raceHistory <$> ask) >>= return . IxSet.toList . getEQ bname
+
 addRacerBuild :: RacerBuild  -> Update RepoDBState ()
 addRacerBuild rbuild = modify (racerBuilds %~ IxSet.insert rbuild)
 
@@ -143,7 +146,7 @@ $(makeAcidic
     , 'getScriptLog
     , 'addScriptLog
     , 'getScriptConfig
-    , 'getRacers
+    , 'fetchRacers
     , 'getNextRacerId
     , 'addRaceHistory
     , 'addRacerBuild

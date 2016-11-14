@@ -10,15 +10,30 @@ module Aria.Routes where
 import Aria
 import GHC.Generics
 import Data.Data
+import Data.Text (Text)
 import Control.Applicative
 import Control.Lens
 import Web.Routes.PathInfo
+import Happstack.Server.Internal.Monads (ServerPartT)
 import Data.Time (NominalDiffTime)
+import Web.Routes.RouteT
+
+type AriaWebApp = RouteT Route (RepoApp (AriaServerApp (ServerPartT IO)))
 
 data Route
-  = AdmRoute (Maybe ArCommand)
+  = AdmRoute (Maybe AdminRoute)
   | RcrRoute RacerRoute
   deriving (Eq, Ord, Show, Data, Typeable, Generic)
+
+data AdminRoute
+  = NewRacer
+  | DelRacer RacerId
+  | ScriptLogs
+  | RunRace
+  | StartRace
+  | StopRace StopCommand
+  | SetupRace [RacerId]
+  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data RacerRoute = RacerRoute
   { _racerRouteId :: RacerId
@@ -33,21 +48,9 @@ instance PathInfo RacerId
 
 instance PathInfo [RacerId]
 
-instance PathInfo StartRaceCmd
+instance PathInfo AdminRoute
 
-instance PathInfo StopAllCmd
-
-instance PathInfo AbortLaneCmd
-
-instance PathInfo StopLaneCmd
-
-instance PathInfo SetupRaceCmd
-
-instance PathInfo IsRacingCmd
-
-instance PathInfo ScriptLogCmd
-
-instance PathInfo ArCommand
+instance PathInfo StopCommand
 
 instance PathInfo Route where
   toPathSegments (AdmRoute r) = ("admin" : toPathSegments r)
@@ -55,7 +58,7 @@ instance PathInfo Route where
   fromPathSegments =
     AdmRoute <$ segment "admin" <*> fromPathSegments <|> RcrRoute <$> fromPathSegments
 
-instance PathInfo (Maybe ArCommand) where
+instance PathInfo (Maybe AdminRoute) where
   toPathSegments Nothing = ["home"]
   toPathSegments (Just r) = toPathSegments r
   fromPathSegments = Nothing <$ segment "home" <|> Just <$> fromPathSegments
@@ -73,8 +76,8 @@ instance PathInfo ActionRoute
 
 makeLenses ''RacerRoute
 
-makeAdminRoute :: ArCommand -> Text
-makeAdminRoute = toPathInfo . AdmRoute . Just . toArCommand
+makeAdminRoute :: AdminRoute -> Text
+makeAdminRoute = toPathInfo . AdmRoute . Just
 
 adminHomeRoute :: Text
 adminHomeRoute = toPathInfo . AdmRoute $ Nothing
@@ -92,5 +95,5 @@ makeRacerRoute rid act =
   toPathInfo . RcrRoute $
   RacerRoute
   { _racerRouteId = rid
-  , _actionRoute = act
+  , _actionRoute = Just act
   }

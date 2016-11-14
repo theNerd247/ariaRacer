@@ -54,7 +54,7 @@ data ScriptLogData = ScriptLogData
 
 data ScriptError =
   ScriptError ScriptLogData
-  deriving (Read, Show, Ord, Eq, Data, Typeable)
+  deriving (Read, Show, Ord, Eq, Data, Typeable, Generic)
 
 instance Exception ScriptError
 
