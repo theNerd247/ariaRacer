@@ -11,23 +11,10 @@ import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BSC
 
-serveConfig =
-  AriaServerConfig
-  { _ariaServerAddress = "127.0.0.1"
-  , _ariaServerPort = "3000"
-  , _maxReceive = 2048
-  }
-
-mkNewRacer :: AriaServerApp IO RacerId
+mkNewRacer :: AriaServerApp IO (Maybe RaceHistoryData)
 mkNewRacer = do 
-  liftIO . putStrLn . BSC.unpack . encode $ NewRacerCmd "Bob"
-  runAriaCommand $ NewRacerCmd "Jo"
+  runAriaCommand $ SetupRaceCmd [RacerId 1, RacerId 1]
+  runAriaCommand $ GetCurrentRaceDataCmd
 
 main :: IO ()
-main = flip runReaderT serveConfig $ do 
-    rid <- mkNewRacer
-    runAriaCommand $ DelRacerCmd rid
-    rid2 <- mkNewRacer
-    sha1 <- runAriaCommand $ UploadCodeCmd rid2 "/home/noah/src/temp/tst.cpp" "TestBuild1"
-    runAriaCommand $ UploadCodeCmd rid2 "/home/noah/src/temp/cpp/src/main.cpp" "TestBuild2"
-    runAriaCommand $ SelectBuildCmd rid2 sha1
+main = flip runReaderT defaultAriaServerConfig $ liftIO . putStrLn . show =<< mkNewRacer

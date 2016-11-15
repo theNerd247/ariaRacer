@@ -17,6 +17,6 @@ import qualified Aria.Scripts as AS
 main :: IO ()
 main = withAcid (Just "/tmp/_state") defaultRepo $
   \acidState -> do
-      siteState <- newTVarIO (RepoAppState acidState Nothing)
+      siteState <- newTVarIO (RepoAppState Nothing)
       forkIO $ acidServer skipAuthenticationCheck (PortNumber (3001 :: PortNumber)) acidState
-      flip runReaderT defaultAriaServerConfig $ serveAriaCommands siteState
+      flip runReaderT defaultAriaServerConfig $ serveAriaCommands siteState acidState

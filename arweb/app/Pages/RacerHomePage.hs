@@ -33,7 +33,7 @@ import qualified Text.Blaze.Bootstrap as BH
 racerHomePage :: RacerId ->  H.Html -> AriaWebApp H.Html
 racerHomePage rid uploadForm = do 
   racer <- lift $ withRacer rid return 
-  racerBuilds <- use raceAcid >>= flip query' (GetRacerBuildsByRId rid)
+  racerBuilds <- getRacerAcid >>= flip query' (GetRacerBuildsByRId rid)
   clks <- getBuildClocks
   appTemplate (racer ^. racerName) $
     do withBuilds racer $ BH.row . BH.col "xs-12" . H.h3 $ "Currently Racing with Build: " <> H.text (fromJust $ racer ^. selectedBuild)
@@ -60,6 +60,6 @@ racerHomePage rid uploadForm = do
            lookup (build ^. buildName) clks
          BH.col "xs-3" $ H.toHtml $ build ^. buildDate
     getBuildClocks = do
-      hist <- use raceAcid >>= flip query' (GetRaceHistByRId rid)
+      hist <- getRacerAcid >>= flip query' (GetRaceHistByRId rid)
       return . DL.sortBy (comparing snd) $ toBuildClock . DL.head . DL.filter ((==rid)._rdRId) . _histRaceData <$> hist
     toBuildClock rd = (rd^.rdBuildName, rd^.rdTime)

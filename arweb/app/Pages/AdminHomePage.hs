@@ -37,7 +37,7 @@ adminHomePage newRacerForm setupRaceForm = do
       A.href (H.toValue . makeAdminRoute $ ScriptLogs) $
       "Script Logs"
     racers = do
-      rs <- use raceAcid >>= flip query' FetchRacers
+      rs <- getRacerAcid >>= flip query' FetchRacers
       return $ DL.sortBy (\r1 r2 -> (r1 ^. racerId) `compare` (r2 ^. racerId)) rs
     genRacerInfoHtml racer = do
       nb <- nBuilds (racer ^. racerId)
@@ -52,4 +52,4 @@ adminHomePage newRacerForm setupRaceForm = do
     delRacerRt r = makeAdminRoute $ DelRacer (r ^. racerId)
     nBuilds :: RacerId -> AriaWebApp Int
     nBuilds rid =
-      use raceAcid >>= flip query' (GetRacerBuildsByRId rid) >>= return . DL.length
+      getRacerAcid >>= flip query' (GetRacerBuildsByRId rid) >>= return . DL.length

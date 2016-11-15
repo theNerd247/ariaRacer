@@ -15,15 +15,17 @@ module Aria
   , module Aria.Repo
   , module Aria.Repo.DB
   , AriaCommand(..)
-  , ArCommand
+  , ArCommand(..)
   , AriaServerConfig(..)
   , AriaServerApp
   , defaultAriaServerConfig
   , runAriaCommand
   , serveAriaCommands
+  , runArCommand
   , maxReceive
   , ariaServerAddress
   , ariaServerPort
+  , withAriaState
   ) where
 
 import Aria.Types
@@ -35,8 +37,8 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TQueue
-import Control.Monad.Trans.State
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
@@ -88,6 +90,7 @@ data ArCommand
   | DelRacerCmd' DelRacerCmd
   | SelectBuildCmd' SelectBuildCmd
   | UploadCodeCmd' UploadCodeCmd
+  | GetCurrentRaceDataCmd' GetCurrentRaceDataCmd
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data AriaException = forall a. (Exception a, ToJSON a, FromJSON a) => AriaException a
@@ -95,8 +98,11 @@ data AriaException = forall a. (Exception a, ToJSON a, FromJSON a) => AriaExcept
 $(deriveSafeCopy 0 'base ''ArCommand)
 
 data ToJSONResult =
-  forall a. (ToJSON a) =>
+  forall a. (Show a, ToJSON a) =>
             ToJSONResult a
+
+instance Show ToJSONResult where
+  show (ToJSONResult a) = show a
 
 type AriaThreadPool = ThreadPool ToJSONResult
 
@@ -105,8 +111,8 @@ class (ToJSON a, FromJSON a, ToJSON (AriaCmdResult a)) =>
   type AriaCmdResult a :: *
   type AriaCmdResult a = ()
   ariaCmd
-    :: (MonadIO m, MonadThrow m, MonadCatch m)
-    => a -> RepoApp m (AriaCmdResult a)
+    :: (MonadIO m, MonadThrow m, MonadCatch m, MonadReader RepoAcid m, MonadState RepoAppState m)
+    => a -> m (AriaCmdResult a)
   toArCommand :: a -> ArCommand
 
 instance Exception TCPReceiveFailed
@@ -146,6 +152,14 @@ instance AriaCommand SelectBuildCmd where
   ariaCmd (SelectBuildCmd rid sha) = selectBuild rid sha
   toArCommand = SelectBuildCmd'
 
+instance AriaCommand GetCurrentRaceDataCmd where
+  type AriaCmdResult GetCurrentRaceDataCmd = Maybe RaceHistoryData
+  ariaCmd GetCurrentRaceDataCmd = do 
+    rd <- use curRaceHistData
+    liftIO . putStrLn . show $ rd
+    return rd
+  toArCommand = GetCurrentRaceDataCmd'
+
 instance AriaCommand UploadCodeCmd where
   type AriaCmdResult UploadCodeCmd = SHA
   ariaCmd (UploadCodeCmd rid path buildName) = uploadCode rid path buildName
@@ -159,6 +173,7 @@ instance FromJSON ArCommand where
     <|> (DelRacerCmd' <$> parseJSON v)
     <|> (SelectBuildCmd' <$> parseJSON v)
     <|> (UploadCodeCmd' <$> parseJSON v)
+    <|> (GetCurrentRaceDataCmd' <$> (parseJSON v :: Parser GetCurrentRaceDataCmd))
 
 runAriaCommand
   :: (AriaCommand a
@@ -179,27 +194,30 @@ runAriaCommand cmd = do
       
 serveAriaCommands
   :: (MonadIO m, MonadThrow m, MonadCatch m, MonadReader AriaServerConfig m)
-  => TVar RepoAppState -> m ()
-serveAriaCommands stateRef = do
+  => TVar RepoAppState -> RepoAcid -> m ()
+serveAriaCommands stateRef acid = do
   config <- ask
   serve "*" (config ^. ariaServerPort) $
     \(socket, _) -> do
       cmd <- receiveAndDecode socket (config ^. maxReceive)
-      result <- withAriaState stateRef $ runArCommand cmd
+      liftIO . putStrLn . show $ cmd
+      result <- withAriaState stateRef acid $ runArCommand cmd
+      liftIO . putStrLn . show $ result
       sendLazy socket . encode $ result
 
 receiveAndDecode :: (MonadThrow m, MonadIO m, FromJSON a) => Socket -> Int -> m a
 receiveAndDecode s max = do
   a <- recv s max
   b <- maybe (throwM $ TCPReceiveFailed) return $ a
+  liftIO . putStrLn . BSC.unpack $ b
   either (throwM . DecodeError) return $ eitherDecodeStrict b
 
 withAriaState
   :: (MonadIO m, MonadCatch m, MonadThrow m)
-  => TVar RepoAppState -> RepoApp m a -> m a
-withAriaState stateRef app = do
+  => TVar RepoAppState -> RepoAcid -> RepoApp m a -> m a
+withAriaState stateRef acid app = do
   state <- liftIO . atomically $ readTVar stateRef
-  (r, s) <- flip runStateT state app
+  (r, s) <- runRepoApp acid state app
   liftIO . atomically $ writeTVar stateRef s
   return r
 
@@ -213,3 +231,4 @@ runArCommand (NewRacerCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (DelRacerCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (SelectBuildCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (UploadCodeCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (GetCurrentRaceDataCmd' x) = ToJSONResult <$> ariaCmd x

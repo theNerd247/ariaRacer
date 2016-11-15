@@ -44,24 +44,31 @@ returnPage :: (ToMarkup a) => a -> AriaWebApp Response
 returnPage = return . toResponse . toHtml 
 
 route :: Route -> AriaWebApp Response
-route r = case r of
-  RcrRoute d -> racerRoutes d
-  AdmRoute d -> admRoutes d
+route r = do 
+  raceData <- lift $ lift $ runAriaCommand GetCurrentRaceDataCmd
+  curRaceHistData .= raceData
+  case r of
+    RcrRoute d -> racerRoutes d
+    AdmRoute d -> admRoutes d
   `catch`
   \(AS.ScriptError log) -> returnPage =<< scriptErrorPage log
 
 admRoutes :: Maybe AdminRoute -> AriaWebApp Response
 admRoutes Nothing = do
-  racers <- use raceAcid >>= flip query' FetchRacers
+  acid <- getRacerAcid
+  racers <- query' acid FetchRacers >>= filterM (onlyRacableRacers acid)
   nrForm <- newRacerForm (adminHomeRoute) newRacerHandle
   srForm <- setupRaceForm racers (adminHomeRoute) setupRaceHandle
   returnPage =<< adminHomePage nrForm srForm
+  where
+    onlyRacableRacers a r = fmap ((0<).DL.length) $ query' a (GetRacerBuildsByRId $ r^.racerId)
+
 admRoutes (Just r) = adminRoute r
 
 adminRoute :: AdminRoute -> AriaWebApp Response
-adminRoute ScriptLogs = use raceAcid >>= flip query' GetScriptLog >>= returnPage
+adminRoute ScriptLogs = getRacerAcid >>= flip query' GetScriptLog >>= returnPage
 adminRoute (DelRacer rid) = do
-  runAriaCommand (DelRacerCmd rid)
+  lift $ lift $ runAriaCommand (DelRacerCmd rid)
   seeOtherURL (AdmRoute Nothing)
 adminRoute RunRace = 
   use curRaceHistData >>= maybe (returnPage =<< raceNotSetupPage) genRunRacePage
@@ -71,19 +78,18 @@ adminRoute RunRace =
       racerNames <- forM (rdata ^. racerIds) (flip withRacer $ return . _racerName)
       returnPage =<< runRacePage (rdata ^. raceLanes) raceFlag racerNames
 adminRoute (StopRace cmd) = do
-  runAriaCommand $ StopRaceCmd cmd
+  lift $ lift $ runAriaCommand $ StopRaceCmd cmd
   seeOtherURL . AdmRoute $ Just RunRace
 adminRoute StartRace = do
-  runAriaCommand StartRaceCmd
+  lift $ lift $ runAriaCommand StartRaceCmd
   seeOtherURL . AdmRoute $ Just RunRace 
 adminRoute (SetupRace rids) = do 
-  runAriaCommand $ SetupRaceCmd rids
+  lift $ lift $ runAriaCommand $ SetupRaceCmd rids
   seeOtherURL . AdmRoute $ Just RunRace
 
 newRacerHandle :: NewRacerFormData -> AriaWebApp Response
 newRacerHandle rName = do
-  rid <- runAriaCommand $ NewRacerCmd rName
-  liftIO . putStrLn . show $ rid
+  lift $ lift $ runAriaCommand $ NewRacerCmd rName
   seeOtherURL $ AdmRoute Nothing
 
 setupRaceHandle :: SetupRaceFormData -> AriaWebApp Response
@@ -128,15 +134,9 @@ uploadCodeHandle r d =
        True -> returnPage =<< buildExistsPage r
        _ -> returnPage =<< buildErrorPage r log
 
-instance Show RepoAppState where
-  show = show . view curRaceHistData
-  
-runRoutes :: TVar RepoAppState -> AriaServerConfig -> Site Route (ServerPartT IO Response)
-runRoutes stateRef ariaServerConfig = mkSitePI $ \showFun url -> do 
-  state <- liftIO . atomically $ readTVar stateRef
-  (r,s) <- flip runReaderT ariaServerConfig . flip runStateT state $ runRouteT route showFun url
-  liftIO . atomically $ writeTVar stateRef s 
-  return r
+runRoutes :: TVar RepoAppState -> RepoAcid -> AriaServerConfig -> Site Route (ServerPartT IO Response)
+runRoutes stateRef acid ariaServerConfig = mkSitePI $ \showFun url -> do 
+  flip runReaderT ariaServerConfig . withAriaState stateRef acid $ runRouteT route showFun url
 
 {-data AriaWebConfig = AriaWebConfig-}
 	{-{ _ariaServerAddress :: HostName-}
@@ -145,11 +145,11 @@ runRoutes stateRef ariaServerConfig = mkSitePI $ \showFun url -> do
 
 main = do
   acidState <- openRemoteState skipAuthenticationPerform "127.0.0.1" (PortNumber (3001 :: PortNumber))
-  siteState <- newTVarIO (RepoAppState acidState Nothing)
+  siteState <- newTVarIO (RepoAppState Nothing)
   simpleHTTP nullConf $
     do decodeBody (defaultBodyPolicy "/tmp" 10000000 10000000 10000000)
        mconcat $
-         [ implSite "" "" $ runRoutes siteState defaultAriaServerConfig
+         [ implSite "" "" $ runRoutes siteState acidState defaultAriaServerConfig
          , (mconcat $
             [ (dir d $ serveDirectory DisableBrowsing [] d)
             | d <- ["css", "js", "fonts"] ])

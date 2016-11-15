@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -7,10 +8,10 @@ module Aria.Commands where
 import Aria.Types
 import Aria.RaceHistory
 import Data.Data
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson
 import GHC.Generics
 import Data.SafeCopy
-import Data.Text (Text)
+import Data.Text (Text,isPrefixOf,isSuffixOf,isInfixOf)
 import qualified Aria.Scripts as AS
 
 data StartRaceCmd =
@@ -59,6 +60,12 @@ data UploadCodeCmd =
 
 $(deriveSafeCopy 0 'base ''UploadCodeCmd)
 
+data GetCurrentRaceDataCmd = 
+  GetCurrentRaceDataCmd
+  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+$(deriveSafeCopy 0 'base ''GetCurrentRaceDataCmd)
+
 instance ToJSON RacerId
 
 instance FromJSON RacerId
@@ -98,3 +105,29 @@ instance FromJSON SelectBuildCmd
 instance ToJSON UploadCodeCmd
 
 instance FromJSON UploadCodeCmd
+
+instance ToJSON RaceClock
+
+instance FromJSON RaceClock
+
+gcRaceData :: Text
+gcRaceData = "GetCurrentRaceDataCmd"
+
+instance ToJSON GetCurrentRaceDataCmd where
+  toJSON x = object [("_getCurrentRaceCmd",String gcRaceData)]
+
+instance FromJSON GetCurrentRaceDataCmd where
+  parseJSON (Object obj) = do 
+   x <- obj .: "_getCurrentRaceCmd"
+   case (isPrefixOf gcRaceData x && isSuffixOf gcRaceData x && isInfixOf x gcRaceData) of
+        True -> return GetCurrentRaceDataCmd
+        _ -> mempty
+  parseJSON _ = mempty
+
+instance ToJSON RaceData
+
+instance FromJSON RaceData
+
+instance ToJSON RaceHistoryData
+
+instance FromJSON RaceHistoryData

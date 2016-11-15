@@ -25,6 +25,8 @@ type RaceHistoryDB = IxSet RaceHistoryData
 
 type RacerBuildDB = IxSet RacerBuild
 
+type RepoAcid = AcidState RepoDBState
+
 data RepoDBState = RepoDBState
   { _racerDB :: RepoDB
   , _nextRacerId :: RacerId
