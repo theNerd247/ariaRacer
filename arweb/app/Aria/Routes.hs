@@ -17,8 +17,17 @@ import Web.Routes.PathInfo
 import Happstack.Server.Internal.Monads (ServerPartT)
 import Data.Time (NominalDiffTime)
 import Web.Routes.RouteT
+import Control.Monad.Reader
+import Control.Monad.State
 
-type AriaWebApp = RouteT Route (RepoApp (AriaServerApp (ServerPartT IO)))
+data RepoAppState = RepoAppState {_curRaceHistData :: Maybe RaceHistoryData}
+  deriving (Eq,Ord,Show,Data,Typeable,Generic)
+
+makeLenses ''RepoAppState
+
+type AriaApp m = ReaderT RepoAcid (StateT RepoAppState m)
+
+type AriaWebApp = RouteT Route (AriaApp (AriaServerApp (ServerPartT IO)))
 
 data Route
   = AdmRoute (Maybe AdminRoute)

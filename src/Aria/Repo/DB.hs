@@ -34,11 +34,12 @@ data RepoDBState = RepoDBState
   , _scriptConfig :: AS.ScriptConfig
   , _raceHistory :: RaceHistoryDB
   , _racerBuilds :: RacerBuildDB
+  , _robotIps :: [String]
   } deriving (Eq, Ord, Show, Data, Typeable)
 
 makeLenses ''RepoDBState
 
-$(deriveSafeCopy 5 'base ''RepoDBState)
+$(deriveSafeCopy 6 'base ''RepoDBState)
 
 instance IxSet.Indexable Racer where
   empty =
@@ -138,6 +139,12 @@ getRacerBuildByName rid bname = (_racerBuilds <$> ask) >>= return . IxSet.getOne
 getRacerBuildBySHA :: RacerId -> SHA -> Query RepoDBState (Maybe RacerBuild)
 getRacerBuildBySHA rid sha = (_racerBuilds <$> ask) >>= return . IxSet.getOne . IxSet.getEQ sha . IxSet.getEQ rid
 
+getRobotIps :: Query RepoDBState [String]
+getRobotIps = ask >>= return . _robotIps
+
+setRobotIps :: [String] -> Update RepoDBState ()
+setRobotIps ips = robotIps .= ips
+
 $(makeAcidic
     ''RepoDBState
     [ 'insertRacer
@@ -156,4 +163,6 @@ $(makeAcidic
     , 'getRacerBuildsByRId
     , 'getRacerBuildByName
     , 'getRacerBuildBySHA
+    , 'getRobotIps
+    , 'setRobotIps
     ])

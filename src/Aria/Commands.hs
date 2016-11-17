@@ -8,6 +8,7 @@ module Aria.Commands where
 import Aria.Types
 import Aria.RaceHistory
 import Data.Data
+import Data.Aeson.Types
 import Data.Aeson
 import GHC.Generics
 import Data.SafeCopy
@@ -66,6 +67,11 @@ data GetCurrentRaceDataCmd =
 
 $(deriveSafeCopy 0 'base ''GetCurrentRaceDataCmd)
 
+data IsRacingCmd = IsRacingCmd
+  deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)
+
+$(deriveSafeCopy 0 'base ''IsRacingCmd)
+
 instance ToJSON RacerId
 
 instance FromJSON RacerId
@@ -110,6 +116,14 @@ instance ToJSON RaceClock
 
 instance FromJSON RaceClock
 
+instance ToJSON RaceData
+
+instance FromJSON RaceData
+
+instance ToJSON RaceHistoryData
+
+instance FromJSON RaceHistoryData
+
 gcRaceData :: Text
 gcRaceData = "GetCurrentRaceDataCmd"
 
@@ -122,12 +136,18 @@ instance FromJSON GetCurrentRaceDataCmd where
    case (isPrefixOf gcRaceData x && isSuffixOf gcRaceData x && isInfixOf x gcRaceData) of
         True -> return GetCurrentRaceDataCmd
         _ -> mempty
-  parseJSON _ = mempty
+  parseJSON x = typeMismatch "GetCurrentRaceDataCmd" x
 
-instance ToJSON RaceData
+isRacingData :: Text
+isRacingData = "IsRacingCmd"
 
-instance FromJSON RaceData
+instance ToJSON IsRacingCmd where
+  toJSON x = object [("_isRacing",String isRacingData)]
 
-instance ToJSON RaceHistoryData
-
-instance FromJSON RaceHistoryData
+instance FromJSON IsRacingCmd where
+  parseJSON (Object obj) = do 
+   x <- obj .: "_isRacing"
+   case (isPrefixOf isRacingData x && isSuffixOf isRacingData x && isInfixOf x isRacingData) of
+        True -> return IsRacingCmd
+        _ -> mempty
+  parseJSON x = typeMismatch "IsRacingCmd" x

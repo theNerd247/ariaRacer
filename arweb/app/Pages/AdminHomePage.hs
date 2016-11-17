@@ -6,6 +6,7 @@
 module Pages.AdminHomePage where
 
 import Aria
+import Control.Monad.IO.Class
 import Aria.Routes
 import HtmlTemplates
 import Control.Lens
@@ -20,18 +21,32 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Bootstrap as BH
 
-adminHomePage :: H.Html -> H.Html -> AriaWebApp H.Html
-adminHomePage newRacerForm setupRaceForm = do
+adminHomePage :: H.Html -> H.Html -> H.Html -> AriaWebApp H.Html
+adminHomePage newRacerForm setupRaceForm robotIpForm = do
   rs <- racers
   racerData <- forM rs genRacerInfoHtml
+  ip1 <- getIp 0
+  ip2 <- getIp 1
   appTemplate "Admin" $
     do BH.row . BH.col "xs-12" $ scriptLogLink
+       
        BH.row . BH.col "xs-12" $ BH.accordion "-one" $
-         [ ( "Manage Racers"
-           , do BH.row . BH.col "xs-12 " $ newRacerForm <> mconcat racerData)
-         , ("Setup Race", BH.row . BH.col "xs-12" $ setupRaceForm)
+         [("Robot Ips", do 
+            BH.row $ do 
+              BH.col "xs-2" $ H.h3 . H.string $ "Current Ips"
+              BH.col "xs-5" $ H.string $ "Lane 1" 
+              BH.col "xs-5" $ H.string $ "Lane 2"
+            BH.row $ do
+              BH.col "xs-2" $ mempty
+              BH.col "xs-5" $ H.string $ ip1
+              BH.col "xs-5" $ H.string $ ip2
+            BH.row . BH.col "xs-12" $ robotIpForm) 
+         ,("Manage Racers", BH.row . BH.col "xs-12 " $ newRacerForm <> mconcat racerData)
+         ,("Setup Race", BH.row . BH.col "xs-12" $ setupRaceForm)
          ]
   where
+    getIp :: Int -> AriaWebApp String
+    getIp i = getRacerAcid >>= flip query' GetRobotIps >>= (\ips -> maybe (return "") return $ ips ^? ix i)
     scriptLogLink =
       H.a ! A.class_ "btn btn-default" !
       A.href (H.toValue . makeAdminRoute $ ScriptLogs) $

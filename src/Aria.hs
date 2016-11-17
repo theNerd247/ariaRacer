@@ -14,10 +14,12 @@ module Aria
   , module Aria.RaceHistory
   , module Aria.Repo
   , module Aria.Repo.DB
+  , module Aria.RaceController
   , AriaCommand(..)
   , ArCommand(..)
   , AriaServerConfig(..)
   , AriaServerApp
+  , RepoApp
   , defaultAriaServerConfig
   , runAriaCommand
   , serveAriaCommands
@@ -26,6 +28,7 @@ module Aria
   , ariaServerAddress
   , ariaServerPort
   , withAriaState
+  , runRepoApp
   ) where
 
 import Aria.Types
@@ -33,6 +36,7 @@ import Aria.Repo
 import Aria.Repo.DB
 import Aria.RaceHistory
 import Aria.Commands
+import Aria.RaceController
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
@@ -82,6 +86,8 @@ data DecodeError =
 
 type AriaServerApp = ReaderT AriaServerConfig
 
+type RepoApp m = ReaderT RepoAcid (StateT RacingStatus m)
+
 data ArCommand
   = StartRaceCmd' StartRaceCmd
   | StopRaceCmd' StopRaceCmd
@@ -91,6 +97,7 @@ data ArCommand
   | SelectBuildCmd' SelectBuildCmd
   | UploadCodeCmd' UploadCodeCmd
   | GetCurrentRaceDataCmd' GetCurrentRaceDataCmd
+  | IsRacingCmd' IsRacingCmd
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data AriaException = forall a. (Exception a, ToJSON a, FromJSON a) => AriaException a
@@ -111,7 +118,7 @@ class (ToJSON a, FromJSON a, ToJSON (AriaCmdResult a)) =>
   type AriaCmdResult a :: *
   type AriaCmdResult a = ()
   ariaCmd
-    :: (MonadIO m, MonadThrow m, MonadCatch m, MonadReader RepoAcid m, MonadState RepoAppState m)
+    :: (MonadIO m, MonadThrow m, MonadCatch m, MonadReader RepoAcid m, MonadState RacingStatus m)
     => a -> m (AriaCmdResult a)
   toArCommand :: a -> ArCommand
 
@@ -154,16 +161,22 @@ instance AriaCommand SelectBuildCmd where
 
 instance AriaCommand GetCurrentRaceDataCmd where
   type AriaCmdResult GetCurrentRaceDataCmd = Maybe RaceHistoryData
-  ariaCmd GetCurrentRaceDataCmd = do 
-    rd <- use curRaceHistData
-    liftIO . putStrLn . show $ rd
-    return rd
+  ariaCmd GetCurrentRaceDataCmd = get >>= getHd
+    where
+      getHd (RaceSetup hd) = return $ Just hd
+      getHd (RaceStarted hd _) = return $ Just hd
+      getHd _ = return Nothing
   toArCommand = GetCurrentRaceDataCmd'
 
 instance AriaCommand UploadCodeCmd where
   type AriaCmdResult UploadCodeCmd = SHA
   ariaCmd (UploadCodeCmd rid path buildName) = uploadCode rid path buildName
   toArCommand = UploadCodeCmd'
+
+instance AriaCommand IsRacingCmd where
+  type AriaCmdResult IsRacingCmd = Bool
+  ariaCmd IsRacingCmd = isRacing
+  toArCommand = IsRacingCmd'
 
 instance FromJSON ArCommand where
   parseJSON v = (StartRaceCmd' <$> parseJSON v)
@@ -174,6 +187,7 @@ instance FromJSON ArCommand where
     <|> (SelectBuildCmd' <$> parseJSON v)
     <|> (UploadCodeCmd' <$> parseJSON v)
     <|> (GetCurrentRaceDataCmd' <$> (parseJSON v :: Parser GetCurrentRaceDataCmd))
+    <|> (IsRacingCmd' <$> (parseJSON v :: Parser IsRacingCmd))
 
 runAriaCommand
   :: (AriaCommand a
@@ -194,27 +208,24 @@ runAriaCommand cmd = do
       
 serveAriaCommands
   :: (MonadIO m, MonadThrow m, MonadCatch m, MonadReader AriaServerConfig m)
-  => TVar RepoAppState -> RepoAcid -> m ()
+  => TVar RacingStatus -> RepoAcid -> m ()
 serveAriaCommands stateRef acid = do
   config <- ask
   serve "*" (config ^. ariaServerPort) $
     \(socket, _) -> do
       cmd <- receiveAndDecode socket (config ^. maxReceive)
-      liftIO . putStrLn . show $ cmd
       result <- withAriaState stateRef acid $ runArCommand cmd
-      liftIO . putStrLn . show $ result
       sendLazy socket . encode $ result
 
 receiveAndDecode :: (MonadThrow m, MonadIO m, FromJSON a) => Socket -> Int -> m a
 receiveAndDecode s max = do
   a <- recv s max
   b <- maybe (throwM $ TCPReceiveFailed) return $ a
-  liftIO . putStrLn . BSC.unpack $ b
   either (throwM . DecodeError) return $ eitherDecodeStrict b
 
 withAriaState
   :: (MonadIO m, MonadCatch m, MonadThrow m)
-  => TVar RepoAppState -> RepoAcid -> RepoApp m a -> m a
+  => TVar RacingStatus -> RepoAcid -> RepoApp m a -> m a
 withAriaState stateRef acid app = do
   state <- liftIO . atomically $ readTVar stateRef
   (r, s) <- runRepoApp acid state app
@@ -232,3 +243,7 @@ runArCommand (DelRacerCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (SelectBuildCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (UploadCodeCmd' x) = ToJSONResult <$> ariaCmd x
 runArCommand (GetCurrentRaceDataCmd' x) = ToJSONResult <$> ariaCmd x
+runArCommand (IsRacingCmd' x) = ToJSONResult <$> ariaCmd x
+
+runRepoApp :: (Monad m) => RepoAcid -> RacingStatus -> RepoApp m a -> m (a,RacingStatus)
+runRepoApp acid state = flip runStateT state . flip runReaderT acid

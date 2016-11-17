@@ -16,6 +16,7 @@ import Data.Data
 import Data.Text (Text)
 import Data.Ord (comparing)
 import Data.Maybe (fromJust)
+import Data.Acid
 import Data.Acid.Run
 import Data.Acid.Advanced
 import Data.Acid.Remote
@@ -59,7 +60,8 @@ admRoutes Nothing = do
   racers <- query' acid FetchRacers >>= filterM (onlyRacableRacers acid)
   nrForm <- newRacerForm (adminHomeRoute) newRacerHandle
   srForm <- setupRaceForm racers (adminHomeRoute) setupRaceHandle
-  returnPage =<< adminHomePage nrForm srForm
+  ipForm <- robotIpForm (adminHomeRoute) setRobotIpsHandle
+  returnPage =<< adminHomePage nrForm srForm ipForm
   where
     onlyRacableRacers a r = fmap ((0<).DL.length) $ query' a (GetRacerBuildsByRId $ r^.racerId)
 
@@ -74,7 +76,7 @@ adminRoute RunRace =
   use curRaceHistData >>= maybe (returnPage =<< raceNotSetupPage) genRunRacePage
   where
     genRunRacePage rdata = do
-      raceFlag <- lift $ isRacing
+      raceFlag <- lift $ lift $ runAriaCommand IsRacingCmd
       racerNames <- forM (rdata ^. racerIds) (flip withRacer $ return . _racerName)
       returnPage =<< runRacePage (rdata ^. raceLanes) raceFlag racerNames
 adminRoute (StopRace cmd) = do
@@ -99,6 +101,19 @@ setupRaceHandle rd = seeOtherURL . AdmRoute . Just $ SetupRace racers
       (Just r,Nothing) -> [r]
       (Nothing,Just r) -> [r]
       (Just r1,Just r2) -> [r1,r2]
+
+setRobotIpsHandle :: RobotIpFormData -> AriaWebApp Response
+setRobotIpsHandle (ip1,ip2) = do
+  setIp 0 ip1 
+  setIp 1 ip2
+  seeOtherURL $ AdmRoute Nothing
+  where
+    setIp :: Int -> Maybe String -> AriaWebApp ()
+    setIp _ Nothing = return ()
+    setIp i (Just ip) = do
+      acid <- getRacerAcid 
+      ips <- query' acid GetRobotIps
+      update' acid $ SetRobotIps (ips & ix i .~ ip)
 
 racerRoutes :: RacerRoute -> AriaWebApp Response
 racerRoutes route = 
@@ -136,12 +151,11 @@ uploadCodeHandle r d =
 
 runRoutes :: TVar RepoAppState -> RepoAcid -> AriaServerConfig -> Site Route (ServerPartT IO Response)
 runRoutes stateRef acid ariaServerConfig = mkSitePI $ \showFun url -> do 
-  flip runReaderT ariaServerConfig . withAriaState stateRef acid $ runRouteT route showFun url
-
-{-data AriaWebConfig = AriaWebConfig-}
-	{-{ _ariaServerAddress :: HostName-}
-  {-, _ariaServerPort :: PortID-}
-	{-} deriving (Eq,Ord,Show,Read,Data,Typeable,Generic)-}
+  flip runReaderT ariaServerConfig $ do
+    state <- liftIO . atomically $ readTVar stateRef
+    (r, s) <- flip runStateT state . flip runReaderT acid $ runRouteT route showFun url
+    liftIO . atomically $ writeTVar stateRef s
+    return r
 
 main = do
   acidState <- openRemoteState skipAuthenticationPerform "127.0.0.1" (PortNumber (3001 :: PortNumber))

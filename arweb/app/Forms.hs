@@ -8,6 +8,10 @@ import Control.Lens
 import Control.Applicative
 import Aria.Types
 import Data.Text (Text(..))
+import Data.Char (isNumber,digitToInt)
+import Data.Monoid
+import Control.Monad
+import Data.Maybe (isJust)
 import Happstack.Server
 import Text.Blaze.Html5 (Html)
 import Text.Blaze.Bootstrap
@@ -30,6 +34,7 @@ data AriaFormError
   = WrongFileType
   | BuildNameRequired
   | BadRaceSelect
+  | InvalidIp
   | CFE (CommonFormError [Input])
   deriving (Show)
 
@@ -39,6 +44,11 @@ data UploadCodeFormData = UploadCodeFormData
   { ubuildName :: Strict.Text
   , ubuildTmpFile :: FilePath
   } deriving (Show)
+
+
+type IpAddressForm = (Strict.Text,Strict.Text,Strict.Text,Strict.Text)
+
+type RobotIpFormData = (Maybe String,Maybe String)
 
 type SetupRaceFormData = (Maybe RacerId,Maybe RacerId) 
 
@@ -51,12 +61,15 @@ instance ToMarkup AriaFormError where
   toMarkup BuildNameRequired = H.string "Build name required"
   toMarkup (CFE e) = H.string "Something went wrong"
   toMarkup BadRaceSelect = H.string "You need to select at least one racer to race with"
+  toMarkup InvalidIp = H.string "An Ip address is invalid!"
 
 newRacerForm act handle = reform (form act) "new-racer" handle Nothing genNewRacerForm
 
 uploadCodeForm act handle = reform (form act) "upload-code" handle Nothing genUploadCodeForm
 
 setupRaceForm racers act handle = reform (form act) "setup-race" handle Nothing (genSetupRaceForm racers)
+
+robotIpForm act handle = reform (form act) "robot-ips" handle Nothing (genRobotIpForm)
 
 genNewRacerForm :: AriaForm m NewRacerFormData
 genNewRacerForm = mkInline $ 
@@ -92,6 +105,14 @@ genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRac
     defaultRacer = (==Nothing)
     submitButton = buttonSubmit "Submit" (H.string "Setup Race") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
 
+genRobotIpForm :: AriaForm m RobotIpFormData
+genRobotIpForm = mkInline $ bootstrapError ++> (ipForms `transformEither` ipAddressProof <* submitButton)
+  where
+    ipForms = (,) <$> (label ("Lane 1 Robot Ip" :: String) ++> ipForm) <*> (label ("Lane 2 Robot Ip" :: String) ++> ipForm)
+    ipForm = (,,,) <$> ipNum <*> ipNum <*> ipNum <*> ipNum
+    ipNum = inputText "0" `setAttr` (A.size "3")
+    submitButton = buttonSubmit "Submit" (H.string "Set Ips") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
+
 setupRaceProof :: SetupRaceFormData -> Either AriaFormError SetupRaceFormData
 setupRaceProof (Nothing,Nothing) = Left BadRaceSelect
 setupRaceProof x = Right x
@@ -121,3 +142,30 @@ cppFileProof f =
   case (DL.isSuffixOf ".cpp" f) of
     True -> Right f
     _ -> Left WrongFileType
+
+ipAddressProof :: (IpAddressForm,IpAddressForm) -> Either AriaFormError RobotIpFormData
+ipAddressProof (f1,f2) = (,) <$> (checkForm f1) <*> (checkForm f2)
+  where
+    checkForm ip@(a,b,c,d) = do 
+      let ds = [a,b,c,d]
+      allOk <- (getAll . mconcat . fmap (All . isJust)) <$> forM ds checkNum
+      case allOk of
+        True -> Right . Just $ DL.intercalate "." $ Strict.unpack <$> ds
+        False -> Right Nothing
+
+    checkNum x 
+      | Strict.null x == True = Right Nothing
+      | otherwise = do 
+          let xs = Strict.unpack x
+          ns <- case (getAll . mconcat . fmap (All . isNumber) $ xs) of
+            True -> Right (digitToInt <$> xs)
+            _ -> Left InvalidIp
+          checkValidIpNum ns
+          return $ Just x
+
+    checkValidIpNum [] = Left InvalidIp
+    checkValidIpNum xs 
+      | 0 <= (toNum xs) && (toNum xs) <= 255 = Right xs
+      | otherwise = Left InvalidIp
+
+    toNum xs = sum . zipWith (\a n -> a*(10^n)) xs $ reverse [0..(length xs - 1)]

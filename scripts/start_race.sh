@@ -15,7 +15,7 @@ robotIps[1]="$robSubnet.13"
 robotIps[2]="$robSubnet.11"
 echo "" > $pidFile
 
-set -xe
+#set -xe
 base=$(pwd)
 
 for i in $(seq 1 $nbots); do

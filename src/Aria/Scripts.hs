@@ -103,6 +103,9 @@ runScript cmd = do
   let scriptProcess =
         (proc cmdPath args)
         { cwd = Just runPath
+        , std_in = NoStream
+        , std_out = NoStream
+        , std_err = NoStream
         }
   -- get the start time
   sTime <- liftIO getCurrentTime

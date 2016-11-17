@@ -18,6 +18,7 @@ library
   exposed-modules:     Aria
                      , Aria.Repo.DB
                      , Aria.Commands
+                     , Aria.RaceController
                      , Aria.Types
                      , Aria.Repo
                      , Data.Acid.Run
