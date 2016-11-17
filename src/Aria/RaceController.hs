@@ -25,7 +25,7 @@ import Control.Concurrent.STM.TVar
 import System.FilePath ((</>))
 import Control.Monad.Catch
 import Data.Data
-import Data.Monoid (All(..),getAll)
+import Data.Monoid (Any(..),getAny)
 
 data RacingStatus = RaceSetup RaceHistoryData 
   | RaceStarted RaceHistoryData [Maybe ProcessHandle]
@@ -104,6 +104,7 @@ stopRace :: (MonadIO m, MonadThrow m, Monad m, MonadReader RepoAcid m, MonadStat
 stopRace cmd = whenRacing $ do
   (RaceStarted hist phs) <- get
   newHist <- stopRaceClocks cmd hist
+  liftIO . putStrLn . show $ newHist
   newPhs <- foldM stopRacer phs $ take (hist^.histRaceData . (to length)) $ toLaneNumbers cmd
   let raceFlag = stillRacing newHist newPhs
   unless raceFlag $ do 
@@ -112,13 +113,13 @@ stopRace cmd = whenRacing $ do
   when raceFlag $ put $ RaceStarted newHist newPhs 
   where
     stopRacer :: (MonadIO m, MonadThrow m) => [Maybe ProcessHandle] -> Int -> m [Maybe ProcessHandle]
-    stopRacer ph i = do 
+    stopRacer ph i = do
       guardMaybe (BadIndexError i) (ph ^? ix i) $ maybe (return ()) (liftIO . interruptProcessGroupOf) 
       return $ ph & ix i .~ Nothing
     toLaneNumbers Abort = [0,1]
     toLaneNumbers (AbortLane i) = [i-1]
     toLaneNumbers (StopLane i) = [i-1]
-    stillRacing hist phs = (not . allStopped $ hist) && (getAll . mconcat . fmap (All . isJust) $ phs)
+    stillRacing hist phs = (not . allStopped $ hist) && (getAny . mconcat . fmap (Any . isJust) $ phs)
 
 isRacing :: (Monad m, MonadState RacingStatus m) => m Bool
 isRacing = do 
