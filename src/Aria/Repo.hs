@@ -131,43 +131,6 @@ selectBuild rid sha = withRacer rid $ \racer -> do
   update' acid (UpdateRacer $ racer & selectedBuild .~ bName)
   return ()
 
-{-setupRace :: (MonadIO m, MonadThrow m, Monad m, MonadReader RepoAcid m) => [RacerId] -> m ()-}
-{-setupRace rids = whenNotRacing $ do-}
-  {-builds <- getRacers rids >>= flip forM getRacerBuild-}
-  {-raceHist <- makeRaceHistory builds-}
-  {-curRaceHistData .= Just raceHist-}
-  {-liftIO . putStrLn $ "setup race: " ++ (show raceHist)-}
-  {-where-}
-    {-getRacerBuild racer = guardMaybe (NoSelectedBuildError $ racer^.racerId) (racer^.selectedBuild) $ \bName -> return (racer^.racerId,bName)-}
-
-{-startRace :: (MonadThrow m, MonadIO m, MonadReader RepoAcid m) => m ()-}
-{-startRace = whenRacing () $ \hd -> do-}
-  {-newHd <- hd & histRaceData . each . rdTime %%~ const startClock-}
-  {-curRaceHistData .= Just newHd-}
-  {-runScript . AS.StartRace $ _rdRId <$> newHd ^. histRaceData -}
-  {-return ()-}
-
-{-stopRace :: (MonadIO m, MonadThrow m, Monad m, MonadReader RepoAcid m) => StopCommand -> m ()-}
-{-stopRace cmd = whenRacing () $ \raceHist -> do-}
-  {-runScript . AS.StopRace $ toLaneNumbers cmd-}
-  {-newHist <- stopRaceClocks cmd raceHist-}
-  {-curRaceHistData .= Just newHist-}
-  {-when (allStopped newHist) $ do -}
-    {-acid <- ask-}
-    {-update' acid . AddRaceHistory $ newHist-}
-    {-curRaceHistData .= Nothing-}
-  {-where-}
-    {-toLaneNumbers Abort = [1,2]-}
-    {-toLaneNumbers (AbortLane i) = [toInteger i]-}
-    {-toLaneNumbers (StopLane i) = [toInteger i]-}
-    
-{-whenRacing :: (Monad m, MonadReader RepoAcid m) => a -> (RaceHistoryData -> m a) -> m a-}
-{-whenRacing x f = use curRaceHistData >>= maybe (return x) f-}
-
-{-whenNotRacing :: (Monad m, MonadReader RepoAcid m) => m () -> m ()-}
-{-whenNotRacing f = use curRaceHistData >>= maybe f (const $ return ())-}
-
-
 getRacers :: (MonadIO m, MonadThrow m, MonadReader RepoAcid m) => [RacerId] -> m [Racer]
 getRacers rids = do
   acid <- ask
