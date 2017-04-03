@@ -52,6 +52,19 @@ executable arweb
   hs-source-dirs:     arweb/app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  other-modules:
+                      Aria.Routes
+                      ,Forms
+                      ,HtmlTemplates
+                      ,Pages
+                      ,Pages.AdminHomePage
+                      ,Pages.BuildErrorPage
+                      ,Pages.BuildExistsPage
+                      ,Pages.NoUserPage
+                      ,Pages.RacerHomePage
+                      ,Pages.RunRacePage
+                      ,Pages.ScriptErrorPage
+
   build-depends:       base
                      , acid-state
                      , ariaRacer
