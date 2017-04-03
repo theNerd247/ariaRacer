@@ -23,8 +23,6 @@ data RaceClock
   | Aborted
   deriving (Eq, Ord, Show, Data, Typeable, Generic)
 
-type RaceClocks = [RaceClock]
-
 data StopCommand
   = StopLane Int
   | Abort
