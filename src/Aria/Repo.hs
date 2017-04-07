@@ -17,6 +17,7 @@ module Aria.Repo
   , defaultRepo
   , guardMaybe
   , AS.scriptBasePath
+  , AS.scriptCwd
   , AS.scriptStartTime
   , AS.scriptEndTime
   , AS.scriptFile
@@ -26,10 +27,10 @@ module Aria.Repo
   , AS.exitCode
   , RacerNotFound(..)
   , InvalidBuildError(..)
-  , module Aria.Repo.DB
+  , module Aria.Acid
   ) where
 
-import Aria.Repo.DB
+import Aria.Acid
 import Aria.Types
 import Aria.RaceHistory
 import Control.Lens

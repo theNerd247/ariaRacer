@@ -7,7 +7,6 @@ module Aria.RaceController where
 import Aria.Types
 import Aria.RaceHistory
 import Aria.Repo
-import Aria.Repo.DB
 import Aria.Scripts
 import Data.Maybe
 import Data.Acid.Advanced

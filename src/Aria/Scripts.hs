@@ -25,7 +25,7 @@ import qualified Data.ByteString.Lazy as BSL
 data ScriptConfig = ScriptConfig
   { _scriptBasePath :: FilePath -- ^ the location of the script files. 
   , _scriptCwd :: FilePath -- ^ the location to execute the script files in. This is assumed to be the location of the git repositories the user creates
-  } deriving (Eq, Ord, Show, Read, Data, Typeable)
+  } deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 data ScriptCommand
   = BuildRacer RacerId

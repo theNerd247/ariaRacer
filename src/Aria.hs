@@ -13,7 +13,6 @@ module Aria
   , module Aria.Commands
   , module Aria.RaceHistory
   , module Aria.Repo
-  , module Aria.Repo.DB
   , module Aria.RaceController
   , AriaCommand(..)
   , ArCommand(..)
@@ -33,7 +32,6 @@ module Aria
 
 import Aria.Types
 import Aria.Repo
-import Aria.Repo.DB
 import Aria.RaceHistory
 import Aria.Commands
 import Aria.RaceController
@@ -66,7 +64,7 @@ data AriaServerConfig = AriaServerConfig
   { _ariaServerAddress :: HostName
   , _ariaServerPort :: ServiceName
   , _maxReceive :: Int
-  } deriving (Eq, Ord, Show, Read, Data, Typeable)
+  } deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 makeLenses ''AriaServerConfig
 

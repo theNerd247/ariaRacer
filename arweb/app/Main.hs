@@ -9,7 +9,7 @@ module Main where
 
 import Aria
 import Aria.Repo
-import Aria.Repo.DB hiding (getRacers)
+import Aria.Acid hiding (getRacers)
 import Aria.Routes
 import Data.SafeCopy
 import Data.Data

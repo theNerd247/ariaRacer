@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Aria.Repo.DB where
+module Aria.Acid where
 
 import Aria.Types
 import Aria.RaceHistory
