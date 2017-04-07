@@ -27,8 +27,7 @@ import qualified Data.List as DL
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Data.Text as Strict
 
-type AriaForm m a = (Happstack m, Monad m, Alternative m, Functor m) =>
-                     Form m [Input] AriaFormError Html () a
+type AriaForm m a = Form m [Input] AriaFormError Html () a
 
 data AriaFormError
   = WrongFileType
@@ -71,14 +70,14 @@ setupRaceForm racers act handle = reform (form act) "setup-race" handle Nothing 
 
 robotIpForm act handle = reform (form act) "robot-ips" handle Nothing (genRobotIpForm)
 
-genNewRacerForm :: AriaForm m NewRacerFormData
+genNewRacerForm :: (Happstack m, Monad m, Alternative m, Functor m) => AriaForm m NewRacerFormData
 genNewRacerForm = mkInline $ 
   buttonSubmit "Submit" (glyphicon "plus" <> glyphicon "user") `setAttr`
   (A.type_ "submit" <> A.class_ "btn btn-success") *>
   inputText "" `setAttr`
   (A.placeholder "New Racer Name" <> A.class_ "form-control")
 
-genUploadCodeForm :: AriaForm m UploadCodeFormData
+genUploadCodeForm :: (Happstack m, Monad m, Alternative m, Functor m) => AriaForm m UploadCodeFormData
 genUploadCodeForm = mkInline . fieldset $ bootstrapError ++> (submitButton *> uploadForm)
   where
     uploadForm = pure UploadCodeFormData <*> buildName <*> buildFile
@@ -92,7 +91,7 @@ genUploadCodeForm = mkInline . fieldset $ bootstrapError ++> (submitButton *> up
       inputText "" `transformEither` buildNameProof `setAttr`
       (A.placeholder "Build Name" <> A.class_ "form-control")
 
-genSetupRaceForm :: [Racer] -> AriaForm m SetupRaceFormData
+genSetupRaceForm :: (Happstack m, Monad m, Alternative m, Functor m) => [Racer] -> AriaForm m SetupRaceFormData
 genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRaceProof <* submitButton)
   where
     selForm = pure (,) 
@@ -105,7 +104,7 @@ genSetupRaceForm racers = bootstrapError ++> (selForm `transformEither` setupRac
     defaultRacer = (==Nothing)
     submitButton = buttonSubmit "Submit" (H.string "Setup Race") `setAttr` (A.type_ "submit" <> A.class_ "btn btn-success")
 
-genRobotIpForm :: AriaForm m RobotIpFormData
+genRobotIpForm :: (Happstack m, Monad m, Alternative m, Functor m) => AriaForm m RobotIpFormData
 genRobotIpForm = mkInline $ bootstrapError ++> (ipForms `transformEither` ipAddressProof <* submitButton)
   where
     ipForms = (,) <$> (label ("Lane 1 Robot Ip" :: String) ++> ipForm) <*> (label ("Lane 2 Robot Ip" :: String) ++> ipForm)
@@ -117,10 +116,10 @@ setupRaceProof :: SetupRaceFormData -> Either AriaFormError SetupRaceFormData
 setupRaceProof (Nothing,Nothing) = Left BadRaceSelect
 setupRaceProof x = Right x
 
-mkFormGroup :: AriaForm m a -> AriaForm m a
+mkFormGroup :: (Happstack m, Monad m, Alternative m, Functor m) => AriaForm m a -> AriaForm m a
 mkFormGroup = mapView $ H.div ! A.class_ "form-group" 
 
-mkInline :: AriaForm m a -> AriaForm m a
+mkInline :: (Happstack m, Monad m, Alternative m, Functor m) => AriaForm m a -> AriaForm m a
 mkInline = mapView $ \v -> v ! A.class_ "form-inline"
 
 bootstrapError

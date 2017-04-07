@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Aria
-                     , Aria.Repo.DB
+                     , Aria.Acid
                      , Aria.Commands
                      , Aria.RaceController
                      , Aria.Types
@@ -97,8 +97,11 @@ executable arrun
   build-depends:       base
                      , ariaRacer
                      , stm
+                     , directory
                      , network
                      , array
+                     , yaml
+                     , lens
                      , acid-state
                      , transformers
   default-language:    Haskell2010
