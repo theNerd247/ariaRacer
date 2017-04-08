@@ -52,11 +52,25 @@ configFP = "aria.yaml"
 
 getConfig :: Aria AriaServerFileConfig
 getConfig = do
+  catchE (checkFileExists configFP) handleConfigNotFound
   -- read config file
   config <- ExceptT $ DY.decodeFileEither configFP >>= return . mapEither DY.prettyPrintParseException
   -- ensure all paths in config file exist
   forM_ [config^.scriptPaths^.scriptCwd, config^.scriptPaths^.scriptBasePath] checkFileExists
   return config
+  where
+    handleConfigNotFound e = do
+      liftIO $ putStrLn e
+      liftIO $ putStrLn "Creating a default one!"
+      makeDefaultConfigFile
+
+makeDefaultConfigFile :: Aria ()
+makeDefaultConfigFile = liftIO . DY.encodeFile configFP 
+  $ AriaServerFileConfig 
+    {_networkConfig = defaultAriaServerConfig
+    ,_scriptPaths = defaultRepo^.scriptConfig
+    ,_robotAdresses = defaultRepo^.robotIps
+    }
 
 mapEither :: (e -> e') -> Either e a -> Either e' a
 mapEither f (Left e) = Left $ f e 

@@ -7,3 +7,8 @@ packages:
     commit: a4bea1a841bca77c00e8e0c65092330586211e7b
 extra-deps: []
 resolver: lts-8.8
+system-ghc: false
+docker:
+  enable: false
+  container-name: "ariaracer"
+  persist: true

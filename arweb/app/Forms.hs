@@ -44,7 +44,6 @@ data UploadCodeFormData = UploadCodeFormData
   , ubuildTmpFile :: FilePath
   } deriving (Show)
 
-
 type IpAddressForm = (Strict.Text,Strict.Text,Strict.Text,Strict.Text)
 
 type RobotIpFormData = (Maybe String,Maybe String)

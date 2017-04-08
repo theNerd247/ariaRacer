@@ -175,7 +175,7 @@ defaultRepo = RepoDBState
   , _racerBuilds = emptyBuildDB
   , _scriptConfig =
     AS.ScriptConfig
-    { AS._scriptBasePath = "/home/noah/src/com/ariaRacer/scripts"
+    { AS._scriptBasePath = "/tmp/scripts"
     , AS._scriptCwd = "/tmp/arrun"
     }
   } 
