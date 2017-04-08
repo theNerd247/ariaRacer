@@ -37,10 +37,20 @@ if test -d $scriptBasePath; then
   cp -r "$install/scripts/skel" "$scriptCwd/"
 fi
 
+if test -f /tmp/arrun_pid; then
+  echo "arrun PID file already exists...aborting!"
+  exit 2
+fi
+
+if test -f /tmp/arweb_pid; then
+  echo "arweb PID file already exists...aborting!"
+  exit 2
+fi
+
 # start the backend server 
-#arrun &
-#echo $! > /tmp/arrun_pid
+arrun &
+echo $! > /tmp/arrun_pid
 
 # ...then start the web app...
-#arweb & 
-#echo $! > /tmp/arweb_pid
+arweb & 
+echo $! > /tmp/arweb_pid
