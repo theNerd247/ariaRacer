@@ -96,7 +96,7 @@ runRacerCode robotIp rid = do
   runPath <- getRacerAcid >>= fmap (_scriptCwd) . flip query' GetScriptConfig
   let cmdPath = runPath</>(show $ rid^.unRacerId)</>"build"</>"ariaracer"</>"ariaracer"
   logHandle <- liftIO $ openFile ("/tmp/robot_"++(show $ rid^.unRacerId)++"_log.txt") WriteMode
-  (_,_,_,ph) <- liftIO . createProcess_ "Running Robot" $ (proc cmdPath ["-rh",robotIp]) {std_out = UseHandle logHandle, create_group = True}
+  (_,_,_,ph) <- liftIO . createProcess_ "Running Robot" $ (proc cmdPath ["-rh",robotIp]) {std_out = UseHandle logHandle, create_group = True, new_session = True}
   return ph
 
 stopRace :: (MonadIO m, MonadThrow m, Monad m, MonadReader RepoAcid m, MonadState RacingStatus m) => StopCommand -> m ()
