@@ -33,7 +33,7 @@ if test -z $scriptBasePath; then
   exit 1
 fi
 
-if test -d $scriptBasePath; then
+if ! test -d "$install/scripts/skel"; then
   cp -r "$install/scripts/skel" "$scriptCwd/"
 fi
 
