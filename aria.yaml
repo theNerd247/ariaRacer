@@ -1,0 +1,10 @@
+_scriptPaths:
+  _scriptCwd: /tmp/arrun
+  _scriptBasePath: /home/noah/src/com/ariaRacer/scripts/
+_robotAdresses:
+- '192.168.1.2'
+- '192.168.1.3'
+_networkConfig:
+  _ariaServerAddress: '127.0.0.1'
+  _ariaServerPort: '3000'
+  _maxReceive: 2048
