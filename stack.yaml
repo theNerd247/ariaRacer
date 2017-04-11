@@ -11,4 +11,12 @@ system-ghc: false
 docker:
   enable: false
   container-name: "ariaracer"
-  persist: true
+image: 
+  containers: 
+    - name: "ariaracer"
+      base: "fpco/stack-run"
+      add:
+        scripts/: /usr/share/ariaracer/scripts
+        js/: /usr/share/ariaracer/js
+        css/: /usr/share/ariaracer/css
+        fonts/: /usr/share/ariaracer/fonts
