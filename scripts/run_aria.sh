@@ -20,9 +20,8 @@ if test -z $scriptCwd; then
   exit 1
 fi
 
-if ! test -d $scriptCwd; then
-	mkdir $scriptCwd
-fi
+mkdir -p $scriptCwd
+cp -r "$install/scripts/skel" "$scriptCwd/"
 
 scriptBasePath=$(getPath "scriptBasePath")
 
@@ -31,10 +30,6 @@ echo "We'll be storing the script files in $scriptBasePath"
 if test -z $scriptBasePath; then
   echo "Could not parse destination path for the scripts directory in aria.yaml"
   exit 1
-fi
-
-if ! test -d "$install/scripts/skel"; then
-  cp -r "$install/scripts/skel" "$scriptCwd/"
 fi
 
 if test -f /tmp/arrun_pid; then

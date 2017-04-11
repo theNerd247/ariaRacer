@@ -12,7 +12,7 @@ if [[ -d $user ]]; then
 	exit 0
 fi
 
-echo "creating user: $user" 1>&2
+echo "creating user: $user" 
 
 set -e
 set -x 
@@ -22,4 +22,4 @@ git init
 git add -A
 git commit -m "init repo"
 
-echo "user created: $user" 1>&2
+echo "user created: $user"
