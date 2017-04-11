@@ -72,8 +72,9 @@ newRacer racer = do
      rid <- update' acid (InsertRacer racer)
      runScript (AS.CreateRacer rid)
      return rid 
-  `catchAll`
-  (\_ -> undoNewUser >> (return $ RacerId 0))
+  `catchAll` 
+  (\e -> undoNewUser >> throwM e)
+
 
 undoNewUser
   :: (Monad m, MonadIO m, MonadThrow m, MonadReader RepoAcid m)
@@ -175,7 +176,7 @@ defaultRepo = RepoDBState
   , _racerBuilds = emptyBuildDB
   , _scriptConfig =
     AS.ScriptConfig
-    { AS._scriptBasePath = "/tmp/scripts"
+    { AS._scriptBasePath = "/usr/share/ariaracer/scripts"
     , AS._scriptCwd = "/tmp/arrun"
     }
   } 
