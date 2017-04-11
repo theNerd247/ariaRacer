@@ -98,7 +98,7 @@ data ArCommand
   | IsRacingCmd' IsRacingCmd
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
-data AriaException = forall a. (Exception a, ToJSON a, FromJSON a) => AriaException a
+data AriaCmdException = AriaCmdException String
 
 $(deriveSafeCopy 0 'base ''ArCommand)
 
@@ -108,8 +108,6 @@ data ToJSONResult =
 
 instance Show ToJSONResult where
   show (ToJSONResult a) = show a
-
-type AriaThreadPool = ThreadPool ToJSONResult
 
 class (ToJSON a, FromJSON a, ToJSON (AriaCmdResult a)) =>
       AriaCommand a  where
@@ -146,7 +144,6 @@ instance AriaCommand NewRacerCmd where
       , _racerId = RacerId 1
       , _selectedBuild = Nothing
       }
-
   toArCommand = NewRacerCmd'
 
 instance AriaCommand DelRacerCmd where
