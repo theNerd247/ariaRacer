@@ -47,5 +47,5 @@ arrun &
 echo $! > /tmp/arrun_pid
 
 # ...then start the web app...
-arweb & 
+arweb 
 echo $! > /tmp/arweb_pid
