@@ -9,9 +9,9 @@ To access a racer home page use the following web address:
 	http://<ip address of web server>/racer-id/<racer-id number here>/home
 
 For example a racer named Bob who has a racer-id of 2. The ip address of the web
-server is 10.0.0.10.31. Bob will upload his code to
+server is 10.0.10.31. Bob will upload his code to
 
-	http://10.0.0.10.31/racer-id/2/home
+	http://10.0.10.31/racer-id/2/home
 
 Once on the racer home page you can upload new c++ source code files to build and race on
 the server. **THESE ARE NOT VISUAL STUDIOS PROJECT FILES!!!!. ONLY .cpp files
